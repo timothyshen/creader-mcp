@@ -10,8 +10,8 @@ import type { Chapter } from "../lib/types.js"
 export function registerChapterTools(server: McpServer) {
   server.tool(
     "list_chapters",
-    "List all chapters in a book (titles and metadata, not full content)",
-    { bookId: z.string().describe("The book ID") },
+    "List chapters in a book (no content)",
+    { bookId: z.string().describe("Book ID") },
     async ({ bookId }) => {
       const client = getClient()
       const chapters = await client.get<Chapter[]>(
@@ -26,34 +26,36 @@ export function registerChapterTools(server: McpServer) {
 
   server.tool(
     "get_chapter",
-    "Get a chapter's full content and metadata",
-    { chapterId: z.string().describe("The chapter ID") },
+    "Get chapter content",
+    { chapterId: z.string().describe("Chapter ID") },
     async ({ chapterId }) => {
       const client = getClient()
-      const chapter = await client.get<Chapter>(`/api/chapters/${chapterId}`)
-      return { content: [{ type: "text" as const, text: JSON.stringify(chapter) }] }
+      const ch = await client.get<Chapter>(`/api/chapters/${chapterId}`)
+      return {
+        content: [{
+          type: "text" as const,
+          text: `# ${ch.title}\nid:${ch.id} | ${ch.wordCount} words\n\n${ch.content || "(empty)"}`,
+        }],
+      }
     }
   )
 
   server.tool(
     "update_chapter",
-    "Update a chapter's title or content. Word count is auto-calculated.",
+    "Update chapter title or content",
     {
-      chapterId: z.string().describe("The chapter ID"),
-      title: z.string().optional().describe("New chapter title"),
-      content: z
-        .string()
-        .optional()
-        .describe("New chapter content (HTML format)"),
+      chapterId: z.string().describe("Chapter ID"),
+      title: z.string().optional(),
+      content: z.string().optional().describe("HTML content"),
     },
     async ({ chapterId, title, content }) => {
       const client = getClient()
-      const chapter = await client.patch<Chapter>(`/api/chapters/${chapterId}`, {
+      const ch = await client.patch<Chapter>(`/api/chapters/${chapterId}`, {
         title,
         content,
       })
       return {
-        content: [{ type: "text" as const, text: `Updated: ${chapter.title} (${chapter.wordCount} words)` }],
+        content: [{ type: "text" as const, text: `Updated: ${ch.title} (${ch.wordCount} words)` }],
       }
     }
   )

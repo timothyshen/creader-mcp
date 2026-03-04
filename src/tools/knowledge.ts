@@ -13,17 +13,13 @@ import type {
 } from "../lib/types.js"
 
 export function registerKnowledgeTools(server: McpServer) {
-  // Search
   server.tool(
     "search_knowledge",
-    "Full-text search across all knowledge entries (characters, locations, events, notes) in a book",
+    "Search knowledge base",
     {
-      bookId: z.string().describe("The book ID"),
-      query: z.string().describe("Search query (min 2 characters)"),
-      type: z
-        .enum(["character", "location", "event", "note"])
-        .optional()
-        .describe("Filter by entity type"),
+      bookId: z.string().describe("Book ID"),
+      query: z.string().describe("Search query"),
+      type: z.enum(["character", "location", "event", "note"]).optional(),
     },
     async ({ bookId, query, type }) => {
       const client = getClient()
@@ -36,13 +32,12 @@ export function registerKnowledgeTools(server: McpServer) {
     }
   )
 
-  // Consolidated list tool
   server.tool(
     "list_knowledge",
-    "List knowledge entries in a book — characters, locations, or events",
+    "List characters, locations, or events in a book",
     {
-      bookId: z.string().describe("The book ID"),
-      type: z.enum(["characters", "locations", "events"]).describe("Type of knowledge to list"),
+      bookId: z.string().describe("Book ID"),
+      type: z.enum(["characters", "locations", "events"]),
     },
     async ({ bookId, type }) => {
       const client = getClient()
@@ -72,22 +67,16 @@ export function registerKnowledgeTools(server: McpServer) {
     }
   )
 
-  // Create character
   server.tool(
     "create_character",
-    "Create a new character in a book",
+    "Create a character",
     {
-      bookId: z.string().describe("The book ID"),
-      name: z.string().describe("Character name"),
-      role: z
-        .enum(["protagonist", "antagonist", "supporting", "minor"])
-        .describe("Character role"),
-      description: z.string().optional().describe("Character description"),
-      age: z.number().optional().describe("Character age"),
-      tags: z
-        .array(z.string())
-        .optional()
-        .describe("Tags for categorization"),
+      bookId: z.string().describe("Book ID"),
+      name: z.string(),
+      role: z.enum(["protagonist", "antagonist", "supporting", "minor"]),
+      description: z.string().optional(),
+      age: z.number().optional(),
+      tags: z.array(z.string()).optional(),
     },
     async ({ bookId, name, role, description, age, tags }) => {
       const client = getClient()
@@ -101,18 +90,15 @@ export function registerKnowledgeTools(server: McpServer) {
     }
   )
 
-  // Create location
   server.tool(
     "create_location",
-    "Create a new location in a book",
+    "Create a location",
     {
-      bookId: z.string().describe("The book ID"),
-      name: z.string().describe("Location name"),
-      type: z
-        .string()
-        .describe("Location type (e.g. city, forest, castle, country)"),
-      description: z.string().optional().describe("Location description"),
-      tags: z.array(z.string()).optional().describe("Tags"),
+      bookId: z.string().describe("Book ID"),
+      name: z.string(),
+      type: z.string().describe("e.g. city, forest, castle"),
+      description: z.string().optional(),
+      tags: z.array(z.string()).optional(),
     },
     async ({ bookId, name, type, description, tags }) => {
       const client = getClient()
@@ -126,35 +112,17 @@ export function registerKnowledgeTools(server: McpServer) {
     }
   )
 
-  // Create event
   server.tool(
     "create_event",
-    "Create a new timeline event in a book",
+    "Create a timeline event",
     {
-      bookId: z.string().describe("The book ID"),
-      title: z.string().describe("Event title"),
-      eventType: z
-        .enum([
-          "plot",
-          "character",
-          "world",
-          "conflict",
-          "resolution",
-          "development",
-        ])
-        .describe("Event type"),
-      description: z.string().optional().describe("Event description"),
-      importance: z
-        .enum(["major", "minor", "background"])
-        .optional()
-        .describe("Event importance (default: minor)"),
-      timestamp: z
-        .number()
-        .describe("Event timestamp (use sequential integers for ordering)"),
-      consequences: z
-        .string()
-        .optional()
-        .describe("Consequences of this event"),
+      bookId: z.string().describe("Book ID"),
+      title: z.string(),
+      eventType: z.enum(["plot", "character", "world", "conflict", "resolution", "development"]),
+      description: z.string().optional(),
+      importance: z.enum(["major", "minor", "background"]).optional(),
+      timestamp: z.number().describe("Ordering position"),
+      consequences: z.string().optional(),
     },
     async ({ bookId, title, eventType, description, importance, timestamp, consequences }) => {
       const client = getClient()
@@ -168,18 +136,14 @@ export function registerKnowledgeTools(server: McpServer) {
     }
   )
 
-  // Create note
   server.tool(
     "create_note",
-    "Create a note in a book (for worldbuilding, research, or communication between agents)",
+    "Create a note",
     {
-      bookId: z.string().describe("The book ID"),
-      title: z.string().describe("Note title"),
-      content: z.string().optional().describe("Note content"),
-      noteType: z
-        .enum(["worldbuilding", "research", "note", "general"])
-        .optional()
-        .describe("Note type (default: general)"),
+      bookId: z.string().describe("Book ID"),
+      title: z.string(),
+      content: z.string().optional(),
+      noteType: z.enum(["worldbuilding", "research", "note", "general"]).optional(),
     },
     async ({ bookId, title, content, noteType }) => {
       const client = getClient()

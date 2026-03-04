@@ -9,12 +9,10 @@ import { getClient } from "../lib/api-client.js"
 export function registerPublishingTools(server: McpServer) {
   server.tool(
     "set_visibility",
-    "Set a book's visibility level (private, link-only, or public)",
+    "Set book visibility",
     {
-      bookId: z.string().describe("The book ID"),
-      visibility: z
-        .enum(["PRIVATE", "LINK_ONLY", "PUBLIC"])
-        .describe("Visibility level"),
+      bookId: z.string().describe("Book ID"),
+      visibility: z.enum(["PRIVATE", "LINK_ONLY", "PUBLIC"]),
     },
     async ({ bookId, visibility }) => {
       const client = getClient()

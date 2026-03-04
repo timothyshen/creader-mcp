@@ -25,8 +25,8 @@ const server = new McpServer({
   version: "0.1.0",
 })
 
-// Register all 15 tools
-registerBookTools(server)       // 3 tools: list_books, get_book, create_book
+// Register all 16 tools
+registerBookTools(server)       // 4 tools: list_books, get_book, create_book, get_book_context
 registerChapterTools(server)    // 3 tools: list_chapters, get_chapter, update_chapter
 registerKnowledgeTools(server)  // 6 tools: search_knowledge, list_knowledge, create_character/location/event, create_note
 registerStatsTools(server)      // 2 tools: get_writing_stats, get_quota

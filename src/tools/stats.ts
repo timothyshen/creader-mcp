@@ -9,7 +9,7 @@ import type { WritingStats, QuotaInfo } from "../lib/types.js"
 export function registerStatsTools(server: McpServer) {
   server.tool(
     "get_writing_stats",
-    "Get the user's writing statistics (streak, total words, today's words)",
+    "Get writing streak and word counts",
     {},
     async () => {
       const client = getClient()
@@ -25,7 +25,7 @@ export function registerStatsTools(server: McpServer) {
 
   server.tool(
     "get_quota",
-    "Get the user's AI token quota (remaining tokens, monthly limit)",
+    "Check remaining AI token quota",
     {},
     async () => {
       const client = getClient()
