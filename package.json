@@ -13,16 +13,17 @@
   ],
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "typescript": "^5.7.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "@types/node": "^22.0.0"
   },
   "engines": {
     "node": ">=18"
