@@ -1,0 +1,13 @@
+/**
+ * Error handling utility for MCP tool responses.
+ * Returns errors as tool content with isError flag so the LLM can see
+ * what went wrong and self-correct, rather than getting a protocol-level error.
+ */
+export function toolError(error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+        isError: true,
+    };
+}
+//# sourceMappingURL=errors.js.map
