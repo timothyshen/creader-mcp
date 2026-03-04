@@ -5,6 +5,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
 import { getClient } from "../lib/api-client.js"
+import { toolError } from "../lib/errors.js"
 
 export function registerPublishingTools(server: McpServer) {
   server.tool(
@@ -14,11 +15,16 @@ export function registerPublishingTools(server: McpServer) {
       bookId: z.string().describe("Book ID"),
       visibility: z.enum(["PRIVATE", "LINK_ONLY", "PUBLIC"]),
     },
+    { readOnlyHint: false, idempotentHint: true, openWorldHint: true },
     async ({ bookId, visibility }) => {
-      const client = getClient()
-      await client.patch<unknown>(`/api/books/${bookId}`, { visibility })
-      return {
-        content: [{ type: "text" as const, text: `Visibility set to ${visibility}` }],
+      try {
+        const client = getClient()
+        await client.patch<unknown>(`/api/books/${bookId}`, { visibility })
+        return {
+          content: [{ type: "text" as const, text: `Visibility set to ${visibility}` }],
+        }
+      } catch (error) {
+        return toolError(error)
       }
     }
   )

@@ -16,21 +16,27 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerBookTools } from "./tools/books.js"
 import { registerChapterTools } from "./tools/chapters.js"
 import { registerKnowledgeTools } from "./tools/knowledge.js"
-
 import { registerStatsTools } from "./tools/stats.js"
 import { registerPublishingTools } from "./tools/publishing.js"
 
-const server = new McpServer({
-  name: "creader",
-  version: "0.1.0",
-})
+const server = new McpServer(
+  { name: "creader", version: "0.1.0" },
+  {
+    instructions: [
+      "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
+      "Books must exist before creating chapters or knowledge entries.",
+      "Use list_chapters to see chapter IDs, then get_chapter to read content.",
+      "search_knowledge searches across all entity types — use the type filter to narrow results.",
+    ].join(" "),
+  }
+)
 
 // Register all 16 tools
-registerBookTools(server)       // 4 tools: list_books, get_book, create_book, get_book_context
-registerChapterTools(server)    // 3 tools: list_chapters, get_chapter, update_chapter
-registerKnowledgeTools(server)  // 6 tools: search_knowledge, list_knowledge, create_character/location/event, create_note
-registerStatsTools(server)      // 2 tools: get_writing_stats, get_quota
-registerPublishingTools(server) // 1 tool:  set_visibility
+registerBookTools(server)
+registerChapterTools(server)
+registerKnowledgeTools(server)
+registerStatsTools(server)
+registerPublishingTools(server)
 
 // Start stdio transport
 const transport = new StdioServerTransport()

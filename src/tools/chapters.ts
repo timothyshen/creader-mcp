@@ -5,6 +5,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
 import { getClient } from "../lib/api-client.js"
+import { toolError } from "../lib/errors.js"
 import type { Chapter } from "../lib/types.js"
 
 export function registerChapterTools(server: McpServer) {
@@ -12,15 +13,20 @@ export function registerChapterTools(server: McpServer) {
     "list_chapters",
     "List chapters in a book (no content)",
     { bookId: z.string().describe("Book ID") },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ bookId }) => {
-      const client = getClient()
-      const chapters = await client.get<Chapter[]>(
-        `/api/books/${bookId}/chapters`
-      )
-      const text = chapters.length
-        ? chapters.map(c => `${c.orderIndex + 1}. ${c.title} (${c.wordCount} words) id:${c.id}`).join("\n")
-        : "No chapters found."
-      return { content: [{ type: "text" as const, text }] }
+      try {
+        const client = getClient()
+        const chapters = await client.get<Chapter[]>(
+          `/api/books/${bookId}/chapters`
+        )
+        const text = chapters.length
+          ? chapters.map(c => `${c.orderIndex + 1}. ${c.title} (${c.wordCount} words) id:${c.id}`).join("\n")
+          : "No chapters found."
+        return { content: [{ type: "text" as const, text }] }
+      } catch (error) {
+        return toolError(error)
+      }
     }
   )
 
@@ -28,14 +34,19 @@ export function registerChapterTools(server: McpServer) {
     "get_chapter",
     "Get chapter content",
     { chapterId: z.string().describe("Chapter ID") },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ chapterId }) => {
-      const client = getClient()
-      const ch = await client.get<Chapter>(`/api/chapters/${chapterId}`)
-      return {
-        content: [{
-          type: "text" as const,
-          text: `# ${ch.title}\nid:${ch.id} | ${ch.wordCount} words\n\n${ch.content || "(empty)"}`,
-        }],
+      try {
+        const client = getClient()
+        const ch = await client.get<Chapter>(`/api/chapters/${chapterId}`)
+        return {
+          content: [{
+            type: "text" as const,
+            text: `# ${ch.title}\nid:${ch.id} | ${ch.wordCount} words\n\n${ch.content || "(empty)"}`,
+          }],
+        }
+      } catch (error) {
+        return toolError(error)
       }
     }
   )
@@ -48,14 +59,19 @@ export function registerChapterTools(server: McpServer) {
       title: z.string().optional(),
       content: z.string().optional().describe("HTML content"),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ chapterId, title, content }) => {
-      const client = getClient()
-      const ch = await client.patch<Chapter>(`/api/chapters/${chapterId}`, {
-        title,
-        content,
-      })
-      return {
-        content: [{ type: "text" as const, text: `Updated: ${ch.title} (${ch.wordCount} words)` }],
+      try {
+        const client = getClient()
+        const ch = await client.patch<Chapter>(`/api/chapters/${chapterId}`, {
+          title,
+          content,
+        })
+        return {
+          content: [{ type: "text" as const, text: `Updated: ${ch.title} (${ch.wordCount} words)` }],
+        }
+      } catch (error) {
+        return toolError(error)
       }
     }
   )
