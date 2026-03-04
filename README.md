@@ -1,18 +1,18 @@
 # @creader/mcp-server
 
-MCP server for [Creader](https://creader.io) — access your stories, knowledge base, and AI tools from any MCP-compatible client.
+MCP server for [Creader](https://creader.io) — access your stories, knowledge base, and writing tools from any MCP-compatible client.
 
 ## Quick Start
 
 ```bash
-npx @creader/mcp-server
+npx github:timothyshen/creader-mcp
 ```
 
 Requires `CREADER_API_KEY` environment variable. Get your API key from Creader Settings > API Keys.
 
 ## Configuration
 
-### Claude Desktop / Claude Code
+### Claude Desktop / OpenClaw
 
 Add to your MCP config:
 
@@ -21,7 +21,7 @@ Add to your MCP config:
   "mcpServers": {
     "creader": {
       "command": "npx",
-      "args": ["@creader/mcp-server"],
+      "args": ["github:timothyshen/creader-mcp"],
       "env": {
         "CREADER_API_KEY": "cr_live_your_key_here"
       }
@@ -30,6 +30,14 @@ Add to your MCP config:
 }
 ```
 
+### Claude Code
+
+```bash
+claude mcp add creader -- npx github:timothyshen/creader-mcp
+```
+
+Then set your API key in the environment or `.env` file.
+
 ### Environment Variables
 
 | Variable | Required | Default | Description |
@@ -37,21 +45,22 @@ Add to your MCP config:
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (20)
+## Tools (16)
 
 ### Books
 
 | Tool | Description |
 |------|-------------|
-| `list_books` | List all books in your library |
-| `get_book` | Get book details by ID |
+| `list_books` | List all books |
+| `get_book` | Get book details |
 | `create_book` | Create a new book (novel, autobiography, worldbook, encyclopedia) |
+| `get_book_context` | Get full book context in one call — metadata, chapters, characters, locations, events |
 
 ### Chapters
 
 | Tool | Description |
 |------|-------------|
-| `list_chapters` | List chapters in a book (titles + word counts) |
+| `list_chapters` | List chapters in a book (titles + word counts, no content) |
 | `get_chapter` | Read a chapter's full content |
 | `update_chapter` | Write or update a chapter |
 
@@ -59,50 +68,51 @@ Add to your MCP config:
 
 | Tool | Description |
 |------|-------------|
-| `search_knowledge` | Full-text search across characters, locations, events, notes |
-| `list_characters` | List all characters in a book |
+| `search_knowledge` | Search across characters, locations, events, and notes |
+| `list_knowledge` | List characters, locations, or events in a book |
 | `create_character` | Create a character (protagonist, antagonist, supporting, minor) |
-| `list_locations` | List all locations in a book |
 | `create_location` | Create a location |
-| `list_events` | List all timeline events in a book |
 | `create_event` | Create a timeline event |
 | `create_note` | Create a note (worldbuilding, research, general) |
-
-### AI
-
-| Tool | Description |
-|------|-------------|
-| `chat` | Chat with AI about a story (knowledge-base-aware) |
-| `generate_outline` | Generate a story outline from a premise |
-| `consistency_check` | Check a book for contradictions |
 
 ### Stats & Publishing
 
 | Tool | Description |
 |------|-------------|
-| `get_writing_stats` | Writing streak, total words, daily progress |
-| `get_quota` | AI token quota remaining |
+| `get_writing_stats` | Writing streak and word counts |
+| `get_quota` | Check remaining AI token quota |
 | `set_visibility` | Set book visibility (PRIVATE, LINK_ONLY, PUBLIC) |
+
+## Features
+
+- **Batch context loading** — `get_book_context` fetches everything in one call (5 parallel API requests), eliminating multiple round trips
+- **Token-efficient responses** — concise text format instead of verbose JSON
+- **TTL caching** — GET responses cached for 60s, automatically cleared on writes
+- **Error handling** — errors returned with `isError` flag so the LLM can self-correct
+- **Tool annotations** — `readOnlyHint`, `destructiveHint`, `idempotentHint` on all tools
+- **Server instructions** — guides the LLM on optimal tool usage during MCP handshake
 
 ## Use Cases
 
-### Two-Agent Collaborative Writing
+### Collaborative Writing
 
-Agent A builds the world, Agent B writes chapters — both connected to the same Creader account:
+Agent A builds the world, Agent B writes chapters — both connected to the same Creader book:
 
 ```
 Agent A: create_book → create_character × 3 → create_location × 2 → create_event × 3
-Agent B: list_books → search_knowledge → update_chapter × N
-Agent A: consistency_check → create_note (feedback)
+Agent B: get_book_context → get_chapter → update_chapter × N
+Agent A: create_note (feedback for Agent B)
 Agent B: search_knowledge ("feedback") → update_chapter (revise)
 ```
 
-### Content Marketing for Authors
-
-Generate Twitter threads or social posts based on your story's knowledge base:
+### Single-Agent Writing
 
 ```
-list_books → search_knowledge (characters) → chat ("write a character intro thread")
+You: "Write chapter 1 of my fantasy novel"
+
+Claude: get_book_context → get full story world
+        get_chapter (ch1) → read existing content
+        update_chapter (ch1) → write the chapter
 ```
 
 ## Development
