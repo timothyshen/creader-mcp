@@ -13,14 +13,12 @@ export function registerStatsTools(server: McpServer) {
     {},
     async () => {
       const client = getClient()
-      const stats = await client.get<WritingStats>("/api/user/writing-stats")
+      const s = await client.get<WritingStats>("/api/user/writing-stats")
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(stats, null, 2),
-          },
-        ],
+        content: [{
+          type: "text" as const,
+          text: `Streak: ${s.currentStreak}/${s.longestStreak} | Today: ${s.todayWords} words | Total: ${s.totalWords} words`,
+        }],
       }
     }
   )
@@ -31,14 +29,12 @@ export function registerStatsTools(server: McpServer) {
     {},
     async () => {
       const client = getClient()
-      const quota = await client.get<QuotaInfo>("/api/user/quota")
+      const q = await client.get<QuotaInfo>("/api/user/quota")
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(quota, null, 2),
-          },
-        ],
+        content: [{
+          type: "text" as const,
+          text: `Quota: ${q.remaining}/${q.tokenQuota} tokens remaining (${q.tokenUsed} used, ${q.tokenBonus} bonus)`,
+        }],
       }
     }
   )

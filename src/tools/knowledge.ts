@@ -1,5 +1,5 @@
 /**
- * Knowledge base MCP tools: search, characters, locations, events, notes
+ * Knowledge base MCP tools: search, list_knowledge, create character/location/event/note
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
@@ -31,37 +31,48 @@ export function registerKnowledgeTools(server: McpServer) {
       if (type) path += `&type=${type}`
       const results = await client.get<unknown>(path)
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(results, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: JSON.stringify(results) }],
       }
     }
   )
 
-  // Characters
+  // Consolidated list tool
   server.tool(
-    "list_characters",
-    "List all characters in a book",
-    { bookId: z.string().describe("The book ID") },
-    async ({ bookId }) => {
+    "list_knowledge",
+    "List knowledge entries in a book — characters, locations, or events",
+    {
+      bookId: z.string().describe("The book ID"),
+      type: z.enum(["characters", "locations", "events"]).describe("Type of knowledge to list"),
+    },
+    async ({ bookId, type }) => {
       const client = getClient()
-      const chars = await client.get<Character[]>(
-        `/api/books/${bookId}/characters`
-      )
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(chars, null, 2),
-          },
-        ],
+
+      if (type === "characters") {
+        const items = await client.get<Character[]>(`/api/books/${bookId}/characters`)
+        const text = items.length
+          ? items.map(c => `- ${c.name} (${c.role || "unset"}) id:${c.id}${c.description ? `: ${c.description}` : ""}`).join("\n")
+          : "No characters found."
+        return { content: [{ type: "text" as const, text }] }
       }
+
+      if (type === "locations") {
+        const items = await client.get<Location[]>(`/api/books/${bookId}/locations`)
+        const text = items.length
+          ? items.map(l => `- ${l.name} (${l.type || "unset"}) id:${l.id}${l.description ? `: ${l.description}` : ""}`).join("\n")
+          : "No locations found."
+        return { content: [{ type: "text" as const, text }] }
+      }
+
+      // events
+      const items = await client.get<TimelineEvent[]>(`/api/books/${bookId}/timeline-events`)
+      const text = items.length
+        ? items.map(e => `- [${e.importance || "minor"}] ${e.title} (${e.eventType || "plot"}) id:${e.id}${e.description ? `: ${e.description}` : ""}`).join("\n")
+        : "No events found."
+      return { content: [{ type: "text" as const, text }] }
     }
   )
 
+  // Create character
   server.tool(
     "create_character",
     "Create a new character in a book",
@@ -85,37 +96,12 @@ export function registerKnowledgeTools(server: McpServer) {
         { name, role, description, age, tags }
       )
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(char, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: `Created character: ${char.name} (id:${char.id})` }],
       }
     }
   )
 
-  // Locations
-  server.tool(
-    "list_locations",
-    "List all locations in a book",
-    { bookId: z.string().describe("The book ID") },
-    async ({ bookId }) => {
-      const client = getClient()
-      const locs = await client.get<Location[]>(
-        `/api/books/${bookId}/locations`
-      )
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(locs, null, 2),
-          },
-        ],
-      }
-    }
-  )
-
+  // Create location
   server.tool(
     "create_location",
     "Create a new location in a book",
@@ -135,37 +121,12 @@ export function registerKnowledgeTools(server: McpServer) {
         { name, type, description, tags }
       )
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(loc, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: `Created location: ${loc.name} (id:${loc.id})` }],
       }
     }
   )
 
-  // Timeline Events
-  server.tool(
-    "list_events",
-    "List all timeline events in a book",
-    { bookId: z.string().describe("The book ID") },
-    async ({ bookId }) => {
-      const client = getClient()
-      const events = await client.get<TimelineEvent[]>(
-        `/api/books/${bookId}/timeline-events`
-      )
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(events, null, 2),
-          },
-        ],
-      }
-    }
-  )
-
+  // Create event
   server.tool(
     "create_event",
     "Create a new timeline event in a book",
@@ -195,32 +156,19 @@ export function registerKnowledgeTools(server: McpServer) {
         .optional()
         .describe("Consequences of this event"),
     },
-    async ({
-      bookId,
-      title,
-      eventType,
-      description,
-      importance,
-      timestamp,
-      consequences,
-    }) => {
+    async ({ bookId, title, eventType, description, importance, timestamp, consequences }) => {
       const client = getClient()
       const event = await client.post<TimelineEvent>(
         `/api/books/${bookId}/timeline-events`,
         { title, eventType, description, importance, timestamp, consequences }
       )
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(event, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: `Created event: ${event.title} (id:${event.id})` }],
       }
     }
   )
 
-  // Notes
+  // Create note
   server.tool(
     "create_note",
     "Create a note in a book (for worldbuilding, research, or communication between agents)",
@@ -241,12 +189,7 @@ export function registerKnowledgeTools(server: McpServer) {
         noteType,
       })
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(note, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: `Created note: ${note.title} (id:${note.id})` }],
       }
     }
   )

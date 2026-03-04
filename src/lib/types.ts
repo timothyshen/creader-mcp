@@ -62,17 +62,6 @@ export interface Note {
   noteType?: string
 }
 
-// AI
-export interface ChatResponse {
-  text: string
-  usage?: {
-    promptTokens?: number
-    completionTokens?: number
-    totalTokens?: number
-  }
-  sessionId?: string
-}
-
 // Stats
 export interface WritingStats {
   currentStreak: number

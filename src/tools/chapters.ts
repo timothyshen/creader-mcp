@@ -17,21 +17,10 @@ export function registerChapterTools(server: McpServer) {
       const chapters = await client.get<Chapter[]>(
         `/api/books/${bookId}/chapters`
       )
-      // Return without full content to save tokens
-      const summary = chapters.map((c) => ({
-        id: c.id,
-        title: c.title,
-        orderIndex: c.orderIndex,
-        wordCount: c.wordCount,
-      }))
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(summary, null, 2),
-          },
-        ],
-      }
+      const text = chapters.length
+        ? chapters.map(c => `${c.orderIndex + 1}. ${c.title} (${c.wordCount} words) id:${c.id}`).join("\n")
+        : "No chapters found."
+      return { content: [{ type: "text" as const, text }] }
     }
   )
 
@@ -42,14 +31,7 @@ export function registerChapterTools(server: McpServer) {
     async ({ chapterId }) => {
       const client = getClient()
       const chapter = await client.get<Chapter>(`/api/chapters/${chapterId}`)
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(chapter, null, 2),
-          },
-        ],
-      }
+      return { content: [{ type: "text" as const, text: JSON.stringify(chapter) }] }
     }
   )
 
@@ -71,12 +53,7 @@ export function registerChapterTools(server: McpServer) {
         content,
       })
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(chapter, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: `Updated: ${chapter.title} (${chapter.wordCount} words)` }],
       }
     }
   )

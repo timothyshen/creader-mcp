@@ -4,7 +4,7 @@
  * Creader MCP Server
  *
  * Exposes Creader's writing platform as MCP tools:
- * books, chapters, knowledge base, AI, stats, and publishing.
+ * books, chapters, knowledge base, stats, and publishing.
  *
  * Requires CREADER_API_KEY environment variable.
  * Optionally set CREADER_API_URL (defaults to https://creader.io).
@@ -16,7 +16,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerBookTools } from "./tools/books.js"
 import { registerChapterTools } from "./tools/chapters.js"
 import { registerKnowledgeTools } from "./tools/knowledge.js"
-import { registerAITools } from "./tools/ai.js"
+
 import { registerStatsTools } from "./tools/stats.js"
 import { registerPublishingTools } from "./tools/publishing.js"
 
@@ -25,11 +25,10 @@ const server = new McpServer({
   version: "0.1.0",
 })
 
-// Register all 20 tools
+// Register all 15 tools
 registerBookTools(server)       // 3 tools: list_books, get_book, create_book
 registerChapterTools(server)    // 3 tools: list_chapters, get_chapter, update_chapter
-registerKnowledgeTools(server)  // 8 tools: search_knowledge, list/create characters, locations, events, create_note
-registerAITools(server)         // 3 tools: chat, generate_outline, consistency_check
+registerKnowledgeTools(server)  // 6 tools: search_knowledge, list_knowledge, create_character/location/event, create_note
 registerStatsTools(server)      // 2 tools: get_writing_stats, get_quota
 registerPublishingTools(server) // 1 tool:  set_visibility
 

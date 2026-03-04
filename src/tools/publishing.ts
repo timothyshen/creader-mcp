@@ -18,16 +18,9 @@ export function registerPublishingTools(server: McpServer) {
     },
     async ({ bookId, visibility }) => {
       const client = getClient()
-      const result = await client.patch<unknown>(`/api/books/${bookId}`, {
-        visibility,
-      })
+      await client.patch<unknown>(`/api/books/${bookId}`, { visibility })
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: `Visibility set to ${visibility}` }],
       }
     }
   )

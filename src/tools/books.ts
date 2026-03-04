@@ -15,14 +15,10 @@ export function registerBookTools(server: McpServer) {
     async () => {
       const client = getClient()
       const books = await client.get<Book[]>("/api/books")
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(books, null, 2),
-          },
-        ],
-      }
+      const text = books.length
+        ? books.map(b => `- ${b.title} (id:${b.id}, ${b.contentType})`).join("\n")
+        : "No books found."
+      return { content: [{ type: "text" as const, text }] }
     }
   )
 
@@ -33,14 +29,7 @@ export function registerBookTools(server: McpServer) {
     async ({ bookId }) => {
       const client = getClient()
       const book = await client.get<Book>(`/api/books/${bookId}`)
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(book, null, 2),
-          },
-        ],
-      }
+      return { content: [{ type: "text" as const, text: JSON.stringify(book) }] }
     }
   )
 
@@ -65,12 +54,7 @@ export function registerBookTools(server: McpServer) {
         contentType,
       })
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(book, null, 2),
-          },
-        ],
+        content: [{ type: "text" as const, text: `Created: ${book.title} (id:${book.id})` }],
       }
     }
   )
