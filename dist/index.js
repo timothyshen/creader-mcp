@@ -23,7 +23,7 @@ const server = new McpServer({ name: "creader", version: "0.1.0" }, {
         "search_knowledge searches across all entity types — use the type filter to narrow results.",
     ].join(" "),
 });
-// Register all 16 tools
+// Register all 24 tools
 registerBookTools(server);
 registerChapterTools(server);
 registerKnowledgeTools(server);

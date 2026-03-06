@@ -45,7 +45,7 @@ Then set your API key in the environment or `.env` file.
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (16)
+## Tools (24)
 
 ### Books
 
@@ -74,6 +74,14 @@ Then set your API key in the environment or `.env` file.
 | `create_location` | Create a location |
 | `create_event` | Create a timeline event |
 | `create_note` | Create a note (worldbuilding, research, general) |
+| `update_character` | Update a character's fields |
+| `update_location` | Update a location's fields |
+| `update_event` | Update a timeline event's fields |
+| `update_note` | Update a note's fields |
+| `delete_character` | Delete a character |
+| `delete_location` | Delete a location |
+| `delete_event` | Delete a timeline event |
+| `delete_note` | Delete a note |
 
 ### Stats & Publishing
 

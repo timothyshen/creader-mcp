@@ -31,7 +31,7 @@ const server = new McpServer(
   }
 )
 
-// Register all 16 tools
+// Register all 24 tools
 registerBookTools(server)
 registerChapterTools(server)
 registerKnowledgeTools(server)
