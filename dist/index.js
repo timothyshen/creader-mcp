@@ -25,7 +25,7 @@ const server = new McpServer({ name: "creader", version: "0.1.0" }, {
         "Use list_relations to see entity-to-entity relationships (e.g. character allies, location containment).",
     ].join(" "),
 });
-// Register all 28 tools
+// Register all 29 tools
 registerBookTools(server);
 registerChapterTools(server);
 registerKnowledgeTools(server);

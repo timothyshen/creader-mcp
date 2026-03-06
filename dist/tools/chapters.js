@@ -33,6 +33,29 @@ export function registerChapterTools(server) {
             return toolError(error);
         }
     });
+    server.tool("create_chapter", "Create a new chapter in a book", {
+        bookId: z.string().describe("Book ID"),
+        title: z.string().describe("Chapter title"),
+        content: z.string().optional().describe("HTML content"),
+        orderIndex: z.number().optional().describe("Position index (auto-assigned if omitted)"),
+        volumeId: z.string().optional().describe("Volume ID if grouped"),
+    }, { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async ({ bookId, title, content, orderIndex, volumeId }) => {
+        try {
+            const client = getClient();
+            const ch = await client.post(`/api/books/${bookId}/chapters`, {
+                title,
+                content,
+                orderIndex,
+                volumeId,
+            });
+            return {
+                content: [{ type: "text", text: `Created chapter: ${ch.title} (id:${ch.id}, order:${ch.orderIndex})` }],
+            };
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
     server.tool("update_chapter", "Update chapter title or content", {
         chapterId: z.string().describe("Chapter ID"),
         title: z.string().optional(),
