@@ -62,6 +62,22 @@ export interface Note {
   noteType?: string
 }
 
+// Semantic Relations
+export interface SemanticRelation {
+  id: string
+  bookId: string
+  sourceId: string
+  sourceType: "character" | "location" | "event" | "note"
+  targetId: string
+  targetType: "character" | "location" | "event" | "note"
+  type: string
+  inverseType: string | null
+  description: string | null
+  strength: number
+  createdAt: string
+  updatedAt: string
+}
+
 // Stats
 export interface WritingStats {
   currentStreak: number

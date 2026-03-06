@@ -18,6 +18,7 @@ import { registerChapterTools } from "./tools/chapters.js"
 import { registerKnowledgeTools } from "./tools/knowledge.js"
 import { registerStatsTools } from "./tools/stats.js"
 import { registerPublishingTools } from "./tools/publishing.js"
+import { registerRelationTools } from "./tools/relations.js"
 
 const server = new McpServer(
   { name: "creader", version: "0.1.0" },
@@ -27,14 +28,16 @@ const server = new McpServer(
       "Books must exist before creating chapters or knowledge entries.",
       "Use list_chapters to see chapter IDs, then get_chapter to read content.",
       "search_knowledge searches across all entity types — use the type filter to narrow results.",
+      "Use list_relations to see entity-to-entity relationships (e.g. character allies, location containment).",
     ].join(" "),
   }
 )
 
-// Register all 24 tools
+// Register all 28 tools
 registerBookTools(server)
 registerChapterTools(server)
 registerKnowledgeTools(server)
+registerRelationTools(server)
 registerStatsTools(server)
 registerPublishingTools(server)
 
