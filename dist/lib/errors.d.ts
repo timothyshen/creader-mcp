@@ -10,4 +10,3 @@ export declare function toolError(error: unknown): {
     }[];
     isError: boolean;
 };
-//# sourceMappingURL=errors.d.ts.map

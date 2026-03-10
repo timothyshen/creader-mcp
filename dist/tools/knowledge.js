@@ -266,4 +266,3 @@ export function registerKnowledgeTools(server) {
         }
     });
 }
-//# sourceMappingURL=knowledge.js.map

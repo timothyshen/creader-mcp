@@ -21,4 +21,3 @@ export function registerPublishingTools(server) {
         }
     });
 }
-//# sourceMappingURL=publishing.js.map

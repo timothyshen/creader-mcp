@@ -35,4 +35,3 @@ export function registerStatsTools(server) {
         }
     });
 }
-//# sourceMappingURL=stats.js.map

@@ -35,4 +35,3 @@ registerPublishingTools(server);
 // Start stdio transport
 const transport = new StdioServerTransport();
 await server.connect(transport);
-//# sourceMappingURL=index.js.map

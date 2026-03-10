@@ -89,4 +89,3 @@ export function registerBookTools(server) {
         }
     });
 }
-//# sourceMappingURL=books.js.map

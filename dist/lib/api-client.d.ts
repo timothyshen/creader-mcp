@@ -33,4 +33,3 @@ export declare class CreaderClient {
     delete<T>(path: string): Promise<T>;
 }
 export declare function getClient(): CreaderClient;
-//# sourceMappingURL=api-client.d.ts.map

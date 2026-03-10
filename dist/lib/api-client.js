@@ -90,4 +90,3 @@ export function getClient() {
     }
     return _client;
 }
-//# sourceMappingURL=api-client.js.map

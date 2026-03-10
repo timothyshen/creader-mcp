@@ -76,4 +76,3 @@ export function registerChapterTools(server) {
         }
     });
 }
-//# sourceMappingURL=chapters.js.map

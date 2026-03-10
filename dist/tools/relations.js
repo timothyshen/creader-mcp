@@ -93,4 +93,3 @@ export function registerRelationTools(server) {
         }
     });
 }
-//# sourceMappingURL=relations.js.map

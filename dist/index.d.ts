@@ -9,4 +9,3 @@
  * Optionally set CREADER_API_URL (defaults to https://creader.io).
  */
 export {};
-//# sourceMappingURL=index.d.ts.map

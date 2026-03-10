@@ -3,4 +3,3 @@
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export declare function registerBookTools(server: McpServer): void;
-//# sourceMappingURL=books.d.ts.map

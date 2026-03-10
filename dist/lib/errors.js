@@ -10,4 +10,3 @@ export function toolError(error) {
         isError: true,
     };
 }
-//# sourceMappingURL=errors.js.map
