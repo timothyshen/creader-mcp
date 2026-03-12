@@ -72,7 +72,7 @@ Then set your API key in the environment or `.env` file.
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (29)
+## Tools (31)
 
 ### Books (4)
 
@@ -119,6 +119,13 @@ Then set your API key in the environment or `.env` file.
 | `create_relation` | Create a relation between two entities (e.g. allies_with, located_in) |
 | `update_relation` | Update a relation's type, description, or strength |
 | `delete_relation` | Delete a relation |
+
+### AI (2)
+
+| Tool | Description |
+|------|-------------|
+| `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
+| `consistency_check` | Detect contradictions, timeline issues, and character inconsistencies |
 
 ### Stats & Publishing (3)
 

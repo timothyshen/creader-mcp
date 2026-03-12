@@ -19,6 +19,7 @@ import { registerKnowledgeTools } from "./tools/knowledge.js"
 import { registerStatsTools } from "./tools/stats.js"
 import { registerPublishingTools } from "./tools/publishing.js"
 import { registerRelationTools } from "./tools/relations.js"
+import { registerAITools } from "./tools/ai.js"
 
 const server = new McpServer(
   { name: "creader", version: "0.1.0" },
@@ -33,11 +34,12 @@ const server = new McpServer(
   }
 )
 
-// Register all 29 tools
+// Register all 31 tools
 registerBookTools(server)
 registerChapterTools(server)
 registerKnowledgeTools(server)
 registerRelationTools(server)
+registerAITools(server)
 registerStatsTools(server)
 registerPublishingTools(server)
 
