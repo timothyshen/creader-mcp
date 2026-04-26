@@ -31,5 +31,12 @@ export declare class CreaderClient {
     post<T>(path: string, body?: unknown): Promise<T>;
     patch<T>(path: string, body?: unknown): Promise<T>;
     delete<T>(path: string): Promise<T>;
+    /**
+     * POST without ApiResponse envelope unwrapping.
+     * Use for endpoints (like /guardian/vector-check) that return raw JSON instead
+     * of the { success, data } envelope. Bypasses the read cache and clears it
+     * on success, same as a regular write.
+     */
+    postRaw<T>(path: string, body?: unknown): Promise<T>;
 }
 export declare function getClient(): CreaderClient;

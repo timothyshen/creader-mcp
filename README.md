@@ -20,7 +20,7 @@ The result: AI-assisted writing that stays consistent across 100+ chapters and c
 ```
 ┌─────────────────┐     MCP (stdio)     ┌──────────────────┐     HTTPS     ┌─────────────┐
 │  Claude / GPT   │ ◄────────────────► │  creader-mcp     │ ◄──────────► │  Creader API │
-│  or any MCP     │     29 tools        │  (this server)   │   REST+JSON  │  creader.io  │
+│  or any MCP     │     32 tools        │  (this server)   │   REST+JSON  │  creader.io  │
 │  client         │                     │                  │              │              │
 └─────────────────┘                     │  - TTL cache     │              │  - Books     │
                                         │  - Error recovery│              │  - Chapters  │
@@ -72,7 +72,7 @@ Then set your API key in the environment or `.env` file.
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (31)
+## Tools (32)
 
 ### Books (4)
 
@@ -120,12 +120,15 @@ Then set your API key in the environment or `.env` file.
 | `update_relation` | Update a relation's type, description, or strength |
 | `delete_relation` | Delete a relation |
 
-### AI (2)
+### AI (5)
 
 | Tool | Description |
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
-| `consistency_check` | Detect contradictions, timeline issues, and character inconsistencies |
+| `consistency_check` | Fast, quota-cheap consistency scan across a book |
+| `analyze_book` | Deep Guardian analysis on a chapter: vector-aware retrieval + AI finds character, plot, timeline, and worldbuilding issues. Returns up to 10 structured `GuardianIssue`s with severity, evidence, and suggestion |
+| `vector_check` | Cross-book semantic conflict detection via embeddings. Detects duplicates, character contradictions, timeline inconsistencies, and location mismatches. Operates on already-indexed content |
+| `proofread` | Publishing-grade proofread of a chapter — punctuation, typo, grammar, formatting issues with char-offset `textPosition` and `suggestedFix` |
 
 ### Stats & Publishing (3)
 
@@ -134,6 +137,82 @@ Then set your API key in the environment or `.env` file.
 | `get_writing_stats` | Writing streak and word counts |
 | `get_quota` | Check remaining AI token quota |
 | `set_visibility` | Set book visibility (PRIVATE, LINK_ONLY, PUBLIC) |
+
+## Best Practices — What Goes Where
+
+New to Creader? This guide explains **which tool to use for each type of content**, so your story data stays organized and renders correctly on [creader.io](https://creader.io).
+
+### Content Model Overview
+
+```
+Book
+├── Chapters          ← Actual prose, outlines, and story content
+├── Knowledge Base
+│   ├── Characters    ← People, creatures, named entities in your world
+│   ├── Locations     ← Places — cities, rooms, planets, forests
+│   ├── Events        ← Timeline entries — plot points, turning points, backstory
+│   └── Notes         ← Worldbuilding rules, research, agent-to-agent messages
+└── Relations         ← Connections between any two entities above
+```
+
+### Where to Put Your Content
+
+| Content | Use This | NOT This | Why |
+|---------|----------|----------|-----|
+| **Chapter text / prose** | `create_chapter` / `update_chapter` | Notes or Knowledge Base | Chapters render as readable pages on creader.io |
+| **Story outline** | `generate_outline` → then `create_chapter` per chapter | Knowledge Base notes | Outlines are chapter-level structure — store them as chapters so they show up in the chapter list |
+| **Character profiles** | `create_character` | Notes | Characters have structured fields (role, age, tags) and appear in the World Foundation panel on creader.io |
+| **Locations / settings** | `create_location` | Notes | Locations have type fields (city, forest, castle) and appear in World Foundation |
+| **Timeline / plot events** | `create_event` | Notes or chapters | Events have timestamps, importance levels, and consequences — they power the timeline view on creader.io |
+| **World rules / magic systems** | `create_note` (type: `worldbuilding`) | Characters or Events | Notes are for unstructured world lore that doesn't fit other categories |
+| **Research / reference material** | `create_note` (type: `research`) | Events | Notes keep research separate from story content |
+| **Agent-to-agent messages** | `create_note` (type: `note`) | — | When multiple agents collaborate, use notes as a message board |
+| **Character relationships** | `create_relation` | Character description field | Relations are queryable and have strength scores — don't bury relationships in description text |
+| **Location hierarchy** | `create_relation` (type: `contains` / `located_in`) | Location description | "City contains District" is a relation, not a description |
+
+### Recommended Workflow
+
+**Starting a new book:**
+```
+1. create_book (pick the right type: novel, worldbook, etc.)
+2. Create your world foundation FIRST:
+   - create_character × N (protagonist, antagonist, supporting cast)
+   - create_location × N (key settings)
+   - create_event × N (major plot points on the timeline)
+   - create_relation × N (how characters/locations/events connect)
+3. generate_outline → review → create_chapter for each outline item
+4. get_book_context → write chapters with full world awareness
+```
+
+**Continuing an existing book:**
+```
+1. get_book_context → load everything into memory
+2. list_relations → understand entity connections
+3. Write / update chapters
+4. Update knowledge base as the story evolves
+```
+
+**Multi-agent collaboration:**
+```
+Agent A (World Builder): creates characters, locations, events, relations
+Agent A: create_note("Outline complete, ready for writing", type: "note")
+Agent B (Writer): search_knowledge("ready for writing") → get_book_context → write chapters
+Agent B: create_note("Chapter 1 draft done, needs review", type: "note")
+```
+
+### How MCP Data Appears on Creader.io
+
+| MCP Tool | Creader Website Location |
+|----------|------------------------|
+| Chapters | **Chapter list** — readable as story pages |
+| Characters | **World Foundation → Characters** panel |
+| Locations | **World Foundation → Locations** panel |
+| Events | **World Foundation → Timeline** view |
+| Notes | **World Foundation → Notes** section |
+| Relations | **World Foundation → Relations** graph |
+| Book visibility | Controls whether the book is publicly accessible |
+
+> **Tip:** Content created via MCP is the same data shown on creader.io. If something looks wrong on the website, check that you stored it in the right place using the table above.
 
 ## Key Design Decisions
 

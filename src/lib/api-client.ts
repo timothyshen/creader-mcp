@@ -113,6 +113,42 @@ export class CreaderClient {
   async delete<T>(path: string): Promise<T> {
     return this.request<T>("DELETE", path)
   }
+
+  /**
+   * POST without ApiResponse envelope unwrapping.
+   * Use for endpoints (like /guardian/vector-check) that return raw JSON instead
+   * of the { success, data } envelope. Bypasses the read cache and clears it
+   * on success, same as a regular write.
+   */
+  async postRaw<T>(path: string, body?: unknown): Promise<T> {
+    const url = `${this.baseUrl}${path}`
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    })
+
+    if (!res.ok) {
+      let msg = `API error: ${res.status}`
+      try {
+        const errJson = (await res.json()) as { error?: string | { message?: string } }
+        const errField = errJson.error
+        if (typeof errField === "string") msg = errField
+        else if (errField?.message) msg = errField.message
+      } catch {
+        // Response wasn't JSON — keep generic message
+      }
+      throw new Error(msg)
+    }
+
+    this.cache.clear()
+    return (await res.json()) as T
+  }
 }
 
 // Singleton instance

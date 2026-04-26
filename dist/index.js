@@ -17,16 +17,17 @@ import { registerStatsTools } from "./tools/stats.js";
 import { registerPublishingTools } from "./tools/publishing.js";
 import { registerRelationTools } from "./tools/relations.js";
 import { registerAITools } from "./tools/ai.js";
-const server = new McpServer({ name: "creader", version: "0.1.0" }, {
+const server = new McpServer({ name: "creader", version: "1.1.0" }, {
     instructions: [
         "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
         "Books must exist before creating chapters or knowledge entries.",
         "Use list_chapters to see chapter IDs, then get_chapter to read content.",
         "search_knowledge searches across all entity types — use the type filter to narrow results.",
         "Use list_relations to see entity-to-entity relationships (e.g. character allies, location containment).",
+        "AI checks: consistency_check for fast quota-cheap scan; analyze_book for deep vector-aware analysis of a single chapter; vector_check for cross-book semantic conflict detection; proofread for publishing-grade grammar/typo pass.",
     ].join(" "),
 });
-// Register all 31 tools
+// Register all 32 tools
 registerBookTools(server);
 registerChapterTools(server);
 registerKnowledgeTools(server);

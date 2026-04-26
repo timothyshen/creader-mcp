@@ -78,3 +78,48 @@ export interface QuotaInfo {
     tokenBonus: number;
     remaining: number;
 }
+export interface GuardianIssue {
+    id: string;
+    severity: "error" | "warning" | "info" | "critical";
+    category: string;
+    title: string;
+    description: string;
+    suggestion?: string;
+    suggestedFix?: string;
+    evidence?: string[];
+    chapterId?: string;
+    entityId?: string;
+    fingerprint: string;
+    tier?: number;
+    timestamp: number;
+    confidence?: "high" | "medium" | "low";
+    detector?: string;
+    lane?: "issue" | "suggestion";
+    textPosition?: {
+        start: number;
+        end: number;
+    };
+}
+export interface VectorConflict {
+    id: string;
+    type: string;
+    explanation: string;
+    sourceA: {
+        id: string;
+        title: string;
+        content: string;
+        chapterId?: string;
+    };
+    sourceB: {
+        id: string;
+        title: string;
+        content: string;
+        chapterId?: string;
+    };
+    detectedAt: number;
+}
+export interface VectorCheckResponse {
+    conflicts: VectorConflict[];
+    issues: unknown[];
+    durationMs: number;
+}
