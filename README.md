@@ -287,6 +287,28 @@ pnpm build
 CREADER_API_KEY=cr_live_... CREADER_API_URL=http://localhost:3000 node dist/index.js
 ```
 
+### Tests
+
+The project ships with a unit suite (mocked `fetch`) and an integration suite (real Creader API, opt-in).
+
+```bash
+pnpm test                # unit tests only — fast, no network
+pnpm test:watch          # unit tests in watch mode
+pnpm test:coverage       # unit tests + v8 coverage report (70% threshold)
+pnpm test:integration    # integration tests — auto-skipped without a token
+pnpm test:all            # everything
+```
+
+Integration tests are read-only and gated on `CREADER_API_TOKEN`. Without the token they skip silently, so CI without the secret stays green.
+
+```bash
+export CREADER_API_TOKEN=cr_live_...
+export CREADER_API_URL=https://creader.io   # optional override
+pnpm test:integration
+```
+
+Coverage reports are written to `coverage/` (HTML at `coverage/index.html`, plus `lcov.info` for CI tooling).
+
 ## License
 
 MIT
