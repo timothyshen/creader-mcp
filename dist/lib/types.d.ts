@@ -123,3 +123,49 @@ export interface VectorCheckResponse {
     issues: unknown[];
     durationMs: number;
 }
+/** Narrative layers the novelist dispatcher fans out to. */
+export type NarrativeLayer = 1 | 2 | 3 | 4 | 5;
+/** Inclusive ceiling on how expensive a detector may be. local = no LLM calls. */
+export type DetectorCost = "local" | "api-light" | "vector" | "api-heavy";
+export interface GuardianLayerReport {
+    layer: NarrativeLayer;
+    issues: GuardianIssue[];
+    detectorTimingsMs?: Record<string, number>;
+    errors?: Array<{
+        detectorId: string;
+        message: string;
+    }>;
+    durationMs?: number;
+    /** Set when a layer's LLM detectors only saw a prefix of the chapter. */
+    truncation?: {
+        analyzedChars: number;
+        totalChars: number;
+    };
+}
+export interface GuardianRunResponse {
+    reports: GuardianLayerReport[];
+    /** Flattened, deduplicated issues across every layer that ran. */
+    issues: GuardianIssue[];
+    techniques?: unknown[];
+    durationMs: number;
+    traceId: string;
+    usage: {
+        totalTokens: number;
+    };
+}
+export interface KnowledgeSearchResult {
+    id: string;
+    type: "character" | "location" | "event" | "note";
+    title: string;
+    content: string;
+    tags: string[];
+    rank: number;
+    createdAt: string;
+    updatedAt: string;
+    metadata?: Record<string, unknown>;
+}
+export interface KnowledgeSearchResponse {
+    results: KnowledgeSearchResult[];
+    total: number;
+    query: string;
+}

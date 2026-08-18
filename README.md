@@ -88,15 +88,15 @@ Then set your API key in the environment or `.env` file.
 | Tool | Description |
 |------|-------------|
 | `list_chapters` | List chapters in a book (titles + word counts, no content) |
-| `get_chapter` | Read a chapter's full content |
+| `get_chapter` | Read a chapter's full content, plus the `baseContentHash` to pass back when writing |
 | `create_chapter` | Create a new chapter |
-| `update_chapter` | Write or update a chapter |
+| `update_chapter` | Write or update a chapter. Prose writes carry a `baseContentHash` and are rejected as a conflict — never silently overwritten — if the editor changed the chapter meanwhile |
 
 ### Knowledge Base (14)
 
 | Tool | Description |
 |------|-------------|
-| `search_knowledge` | Search across characters, locations, events, and notes |
+| `search_knowledge` | Substring search across characters, locations, events, and notes (case-insensitive, CJK-safe; queries must be 2+ characters) |
 | `list_knowledge` | List characters, locations, or events in a book |
 | `create_character` | Create a character (protagonist, antagonist, supporting, minor) |
 | `create_location` | Create a location |
@@ -120,15 +120,38 @@ Then set your API key in the environment or `.env` file.
 | `update_relation` | Update a relation's type, description, or strength |
 | `delete_relation` | Delete a relation |
 
-### AI (5)
+### AI (3)
 
 | Tool | Description |
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
-| `consistency_check` | Fast, quota-cheap consistency scan across a book |
-| `analyze_book` | Deep Guardian analysis on a chapter: vector-aware retrieval + AI finds character, plot, timeline, and worldbuilding issues. Returns up to 10 structured `GuardianIssue`s with severity, evidence, and suggestion |
+| `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation |
 | `vector_check` | Cross-book semantic conflict detection via embeddings. Detects duplicates, character contradictions, timeline inconsistencies, and location mismatches. Operates on already-indexed content |
-| `proofread` | Publishing-grade proofread of a chapter — punctuation, typo, grammar, formatting issues with char-offset `textPosition` and `suggestedFix` |
+
+#### Guardian layers and cost
+
+`guardian_check` fronts Creader's single Guardian dispatcher. It replaced
+`consistency_check`, `analyze_book` and `proofread`, whose routes were deleted
+from the product on 2026-05-01 — all three had been returning 404 to every
+caller since.
+
+| Layer | What it checks |
+|-------|----------------|
+| 1 | Consistency — dead characters, name typos, timeline and entity contradictions |
+| 2 | Style & Prose — cliche, weak verbs, dialogue tags, POV leak, proofreading |
+| 3 | Analysis — character arcs, causal chains, literary quality |
+| 4 | Chapter & Suspense — opening quality, suspense, thread coverage, cliffhangers |
+| 5 | Plot Structure — three-act shape, inciting incident, midpoint, foreshadowing |
+
+`costBudget` is an inclusive ceiling on how expensive a detector may be:
+
+- `local` (default) — no model calls, no token quota, no `ai` scope needed.
+  Reaches only the rule-based detectors, so **layer 3 returns nothing** and
+  layers 1/2/4/5 return only their local subset (cliche and repetition yes,
+  proofreading and POV leak no).
+- `api-light` / `vector` / `api-heavy` — progressively deeper. `api-heavy` is
+  the full pass; it spends the account's token quota and requires an API key
+  minted with the `ai` scope.
 
 ### Stats & Publishing (3)
 

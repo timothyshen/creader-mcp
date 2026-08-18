@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { installFetchMock, type FetchMock } from "../../helpers/mock-fetch.js"
 import { FakeMcpServer, asToolResult } from "../../helpers/fake-mcp-server.js"
-import { fxChapter, fxVectorCheck } from "../../helpers/fixtures.js"
+import { fxChapter, fxGuardianRun, fxVectorCheck } from "../../helpers/fixtures.js"
 
 async function setup() {
   vi.resetModules()
@@ -18,15 +18,23 @@ describe("AI tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers all five AI tools", async () => {
+  it("registers the three live AI tools", async () => {
     const server = await setup()
     expect(server.names().sort()).toEqual([
-      "analyze_book",
-      "consistency_check",
       "generate_outline",
-      "proofread",
+      "guardian_check",
       "vector_check",
     ])
+  })
+
+  it("no longer exposes the tools whose routes the product deleted", async () => {
+    const server = await setup()
+    // consistency_check / analyze_book / proofread fronted /guardian/quick-check,
+    // /analyze and /proofread. All three were deleted on 2026-05-01 and replaced
+    // by the single /guardian/run dispatcher, so every call 404'd.
+    expect(server.has("consistency_check")).toBe(false)
+    expect(server.has("analyze_book")).toBe(false)
+    expect(server.has("proofread")).toBe(false)
   })
 
   describe("generate_outline", () => {
@@ -57,54 +65,96 @@ describe("AI tools", () => {
     })
   })
 
-  describe("consistency_check", () => {
-    it("POSTs to the guardian quick-check endpoint", async () => {
-      const server = await setup()
-      fetchMock.mockSuccess({ issues: [] })
-      await server.call("consistency_check", { bookId: "book_1" })
-      expect(fetchMock.lastCall()!.url).toBe(
-        "https://test.creader.local/api/books/book_1/guardian/quick-check"
-      )
-      expect(fetchMock.lastCall()!.method).toBe("POST")
-    })
-  })
-
-  describe("analyze_book", () => {
-    it("fetches the chapter then POSTs to guardian/analyze", async () => {
+  describe("guardian_check", () => {
+    it("reads the chapter, then POSTs plain text to the run dispatcher", async () => {
       const server = await setup()
       fetchMock
-        .mockSuccess(fxChapter)
-        .mockSuccess([{ id: "i1", severity: "warning", category: "plot", title: "T", description: "D", fingerprint: "f", timestamp: 1 }])
+        .mockSuccess({ ...fxChapter, content: "<p>He had a <em>heart of gold</em>.</p>" })
+        .mockRaw(fxGuardianRun)
 
-      const result = asToolResult(
-        await server.call("analyze_book", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.content[0].text).toContain("\"category\": \"plot\"")
+      await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
+
       expect(fetchMock.calls[0].method).toBe("GET")
-      expect(fetchMock.calls[1].method).toBe("POST")
-      expect(fetchMock.calls[1].body).toMatchObject({
+      expect(fetchMock.calls[0].url).toBe("https://test.creader.local/api/chapters/chap_1")
+      const call = fetchMock.calls[1]
+      expect(call.method).toBe("POST")
+      expect(call.url).toBe("https://test.creader.local/api/books/book_1/guardian/run")
+      // Offsets in the response index into plainContent, so the tags must be
+      // removed without spacers — anything else mislocates every finding.
+      expect(call.body).toMatchObject({
         chapterId: "chap_1",
-        chapterContent: "Once upon a time.",
+        plainContent: "He had a heart of gold.",
+        htmlContent: "<p>He had a <em>heart of gold</em>.</p>",
+        trigger: "manual",
       })
     })
 
-    it("returns 'No issues found.' when issues array is empty", async () => {
+    it("defaults to the local budget so a plain check spends no token quota", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockSuccess([])
-      const result = asToolResult(
-        await server.call("analyze_book", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.content[0].text).toBe("No issues found.")
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
+      expect(fetchMock.calls[1].body).toMatchObject({ costBudget: "local" })
     })
 
-    it("returns a tool error when chapter has no content", async () => {
+    it("passes through an explicit layer selection and budget", async () => {
       const server = await setup()
-      fetchMock.mockSuccess({ ...fxChapter, content: "" })
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      await server.call("guardian_check", {
+        bookId: "book_1",
+        chapterId: "chap_1",
+        layers: [2, 5],
+        costBudget: "api-heavy",
+        locale: "zh",
+      })
+      expect(fetchMock.calls[1].body).toMatchObject({
+        layers: [2, 5],
+        costBudget: "api-heavy",
+        locale: "zh",
+      })
+    })
+
+    it("omits layers entirely when none are given, so the server runs all five", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
+      expect(fetchMock.calls[1].body).not.toHaveProperty("layers")
+    })
+
+    it("surfaces detector errors and truncation, not just the issue list", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
       const result = asToolResult(
-        await server.call("analyze_book", { bookId: "book_1", chapterId: "chap_1" })
+        await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
+      )
+      const parsed = JSON.parse(result.content[0].text)
+      expect(parsed.issues).toHaveLength(1)
+      expect(parsed.traceId).toBe("run-abc-1234")
+      expect(parsed.tokensSpent).toBe(0)
+      // A layer whose detector died covered less than the issue count implies.
+      // Hiding that would report "clean" for prose nobody actually checked.
+      const l2 = parsed.layers.find((l: { layer: number }) => l.layer === 2)
+      expect(l2.errors).toEqual([{ detectorId: "l2.proofread", message: "provider timeout" }])
+      expect(l2.truncation).toEqual({ analyzedChars: 6000, totalChars: 9000 })
+    })
+
+    it("returns a tool error when the chapter has no prose", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxChapter, content: "<p></p>" })
+      const result = asToolResult(
+        await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       )
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toContain("no content")
+    })
+
+    it("propagates dispatcher HTTP errors (e.g. a key without the ai scope)", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxChapter).mockHttpError(403, { error: "This API key lacks the 'ai' scope." })
+      const result = asToolResult(
+        await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("'ai' scope")
     })
   })
 
@@ -132,35 +182,4 @@ describe("AI tools", () => {
     })
   })
 
-  describe("proofread", () => {
-    it("fetches the chapter then POSTs to guardian/proofread", async () => {
-      const server = await setup()
-      fetchMock
-        .mockSuccess(fxChapter)
-        .mockSuccess([{ id: "p1", severity: "info", category: "typo", title: "T", description: "D", fingerprint: "f", timestamp: 1 }])
-
-      const result = asToolResult(
-        await server.call("proofread", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.content[0].text).toContain("\"category\": \"typo\"")
-    })
-
-    it("returns 'No proofreading issues found.' when empty", async () => {
-      const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockSuccess([])
-      const result = asToolResult(
-        await server.call("proofread", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.content[0].text).toBe("No proofreading issues found.")
-    })
-
-    it("returns a tool error when chapter has no content", async () => {
-      const server = await setup()
-      fetchMock.mockSuccess({ ...fxChapter, content: "" })
-      const result = asToolResult(
-        await server.call("proofread", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.isError).toBe(true)
-    })
-  })
 })

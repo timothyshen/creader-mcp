@@ -8,6 +8,7 @@ import { getClient } from "../lib/api-client.js"
 import { toolError } from "../lib/errors.js"
 import type {
   Character,
+  KnowledgeSearchResponse,
   Location,
   TimelineEvent,
   Note,
@@ -16,19 +17,35 @@ import type {
 export function registerKnowledgeTools(server: McpServer) {
   server.tool(
     "search_knowledge",
-    "Search knowledge base",
+    "Search a book's knowledge base (characters, locations, timeline events, notes) by substring. Case-insensitive and character-agnostic, so CJK works the same as English. Queries shorter than 2 characters are rejected by the server.",
     {
       bookId: z.string().describe("Book ID"),
-      query: z.string().describe("Search query"),
+      query: z
+        .string()
+        .min(2)
+        .describe("Search query — at least 2 characters (server returns nothing below that)"),
       type: z.enum(["character", "location", "event", "note"]).optional(),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Max results (default 50, server caps at 100)"),
     },
     { readOnlyHint: true, openWorldHint: true },
-    async ({ bookId, query, type }) => {
+    async ({ bookId, query, type, limit }) => {
       try {
         const client = getClient()
-        let path = `/api/books/${bookId}/knowledge?q=${encodeURIComponent(query)}`
+        // The route is /knowledge/search, and it replies with bare JSON
+        // ({ results, total, query }) rather than the { success, data }
+        // envelope — hence getRaw. Both facts were wrong here for months:
+        // building the URL into a variable first hid the dead path from
+        // every reviewer and from the drift detector's first draft.
+        let path = `/api/books/${bookId}/knowledge/search?q=${encodeURIComponent(query)}`
         if (type) path += `&type=${type}`
-        const results = await client.get<unknown>(path)
+        if (limit) path += `&limit=${limit}`
+        const results = await client.getRaw<KnowledgeSearchResponse>(path)
         return {
           content: [{ type: "text" as const, text: JSON.stringify(results) }],
         }

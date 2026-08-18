@@ -9,6 +9,7 @@ import type {
   WritingStats,
   QuotaInfo,
   VectorCheckResponse,
+  GuardianRunResponse,
 } from "../../src/lib/types.js"
 
 export const fxBook: Book = {
@@ -98,4 +99,51 @@ export const fxVectorCheck: VectorCheckResponse = {
   conflicts: [],
   issues: [],
   durationMs: 42,
+}
+
+export const fxGuardianRun: GuardianRunResponse = {
+  reports: [
+    {
+      layer: 1,
+      issues: [],
+      detectorTimingsMs: { "l1.name-typo": 2 },
+      errors: [],
+      durationMs: 3,
+    },
+    {
+      layer: 2,
+      issues: [
+        {
+          id: "i1",
+          severity: "warning",
+          category: "style",
+          title: "Cliche",
+          description: "heart of gold",
+          fingerprint: "f1",
+          timestamp: 1,
+          detector: "l2.cliche",
+          textPosition: { start: 5, end: 18 },
+        },
+      ],
+      errors: [{ detectorId: "l2.proofread", message: "provider timeout" }],
+      durationMs: 40,
+      truncation: { analyzedChars: 6000, totalChars: 9000 },
+    },
+  ],
+  issues: [
+    {
+      id: "i1",
+      severity: "warning",
+      category: "style",
+      title: "Cliche",
+      description: "heart of gold",
+      fingerprint: "f1",
+      timestamp: 1,
+      detector: "l2.cliche",
+      textPosition: { start: 5, end: 18 },
+    },
+  ],
+  durationMs: 43,
+  traceId: "run-abc-1234",
+  usage: { totalTokens: 0 },
 }
