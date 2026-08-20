@@ -21,10 +21,10 @@ const server = new McpServer({ name: "creader", version: "1.1.0" }, {
     instructions: [
         "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
         "Books must exist before creating chapters or knowledge entries.",
-        "Use list_chapters to see chapter IDs, then get_chapter to read content.",
+        "Use list_chapters to see chapter IDs, then get_chapter to read content. Always get_chapter before update_chapter when writing prose — update_chapter needs the baseContentHash get_chapter returns, and rejects the write as a conflict if the editor changed the chapter meanwhile.",
         "search_knowledge searches across all entity types — use the type filter to narrow results.",
         "Use list_relations to see entity-to-entity relationships (e.g. character allies, location containment).",
-        "AI checks: consistency_check for fast quota-cheap scan; analyze_book for deep vector-aware analysis of a single chapter; vector_check for cross-book semantic conflict detection; proofread for publishing-grade grammar/typo pass.",
+        "AI checks: guardian_check runs the 5-layer narrative Guardian on one chapter — pick layers (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure) and a costBudget; the default 'local' budget is free and makes no model calls, 'api-heavy' spends token quota. vector_check finds cross-book semantic conflicts in already-indexed content.",
     ].join(" "),
 });
 // Register all 32 tools

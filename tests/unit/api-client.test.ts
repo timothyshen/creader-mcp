@@ -186,6 +186,73 @@ describe("CreaderClient", () => {
     })
   })
 
+  describe("getRaw", () => {
+    it("returns the bare body — routes without the envelope would otherwise throw", async () => {
+      const { CreaderClient } = await loadClient()
+      const c = new CreaderClient("k", "https://api.test")
+      fetchMock.mockRaw({ results: [{ id: "1" }], total: 1, query: "a" })
+
+      const data = await c.getRaw<{ total: number }>("/api/books/1/knowledge/search?q=a")
+
+      expect(data).toEqual({ results: [{ id: "1" }], total: 1, query: "a" })
+      expect(fetchMock.lastCall()!.method).toBe("GET")
+    })
+
+    it("participates in the GET cache like any other read", async () => {
+      const { CreaderClient } = await loadClient()
+      const c = new CreaderClient("k", "https://api.test")
+      fetchMock.mockRaw({ results: [] })
+      await c.getRaw("/api/raw-read")
+      await c.getRaw("/api/raw-read")
+      expect(fetchMock.calls.length).toBe(1)
+    })
+  })
+
+  describe("ApiRequestError", () => {
+    it("carries status and the enveloped error code so callers can branch", async () => {
+      const { CreaderClient } = await loadClient()
+      const { ApiRequestError } = await import("../../src/lib/errors.js")
+      const c = new CreaderClient("k", "https://api.test")
+      fetchMock.mockHttpError(409, {
+        success: false,
+        error: { code: "CHAPTER_CONTENT_CONFLICT", message: "changed" },
+      })
+
+      // Without the status/code a write conflict is indistinguishable from any
+      // other failure except by string-matching the server's prose.
+      await expect(c.patch("/api/chapters/1", {})).rejects.toMatchObject({
+        status: 409,
+        code: "CHAPTER_CONTENT_CONFLICT",
+      })
+      await expect(c.patch("/api/chapters/1", {})).rejects.toBeInstanceOf(Error)
+      expect(ApiRequestError.name).toBe("ApiRequestError")
+    })
+
+    it("carries status through the raw path too", async () => {
+      const { CreaderClient } = await loadClient()
+      const c = new CreaderClient("k", "https://api.test")
+      fetchMock.mockHttpError(403, { error: "This API key lacks the 'ai' scope." })
+      await expect(c.postRaw("/api/books/1/guardian/run")).rejects.toMatchObject({
+        status: 403,
+      })
+    })
+  })
+
+  describe("invalidate", () => {
+    it("drops one cached path so the next read is fresh", async () => {
+      const { CreaderClient } = await loadClient()
+      const c = new CreaderClient("k", "https://api.test")
+      fetchMock.mockSuccess({ v: 1 }).mockSuccess({ v: 2 })
+
+      await c.get("/api/chapters/1")
+      c.invalidate("/api/chapters/1")
+      const second = await c.get<{ v: number }>("/api/chapters/1")
+
+      expect(second).toEqual({ v: 2 })
+      expect(fetchMock.calls.length).toBe(2)
+    })
+  })
+
   describe("getClient singleton", () => {
     it("returns the same instance on repeated calls", async () => {
       const { getClient } = await loadClient()

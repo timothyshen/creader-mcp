@@ -39,9 +39,9 @@ describe("knowledge tools", () => {
   })
 
   describe("search_knowledge", () => {
-    it("URL-encodes the query and includes type filter", async () => {
+    it("hits /knowledge/search — the bare /knowledge URL never existed", async () => {
       const server = await setup()
-      fetchMock.mockSuccess({ matches: [] })
+      fetchMock.mockRaw({ results: [], total: 0, query: "magic sword" })
       await server.call("search_knowledge", {
         bookId: "book_1",
         query: "magic sword",
@@ -49,22 +49,46 @@ describe("knowledge tools", () => {
       })
       const url = fetchMock.lastCall()!.url
       expect(url).toBe(
-        "https://test.creader.local/api/books/book_1/knowledge?q=magic%20sword&type=character"
+        "https://test.creader.local/api/books/book_1/knowledge/search?q=magic%20sword&type=character"
       )
     })
 
-    it("omits the type param when not provided", async () => {
+    it("reads the bare-JSON body — this route has no { success, data } envelope", async () => {
       const server = await setup()
-      fetchMock.mockSuccess({ matches: [] })
-      await server.call("search_knowledge", { bookId: "book_1", query: "x" })
+      // Sent through the enveloped client this 200 would throw "API error: 200",
+      // so pointing the URL at the right route is only half the fix.
+      fetchMock.mockRaw({
+        results: [{ id: "char_1", type: "character", title: "Alice", content: "", tags: [], rank: 5, createdAt: "", updatedAt: "" }],
+        total: 1,
+        query: "Alice",
+      })
+      const result = asToolResult(
+        await server.call("search_knowledge", { bookId: "book_1", query: "Alice" })
+      )
+      expect(result.isError).toBeUndefined()
+      expect(JSON.parse(result.content[0].text).results[0].title).toBe("Alice")
+    })
+
+    it("omits the type and limit params when not provided", async () => {
+      const server = await setup()
+      fetchMock.mockRaw({ results: [], total: 0, query: "xy" })
+      await server.call("search_knowledge", { bookId: "book_1", query: "xy" })
       expect(fetchMock.lastCall()!.url).not.toContain("type=")
+      expect(fetchMock.lastCall()!.url).not.toContain("limit=")
+    })
+
+    it("passes an explicit limit through", async () => {
+      const server = await setup()
+      fetchMock.mockRaw({ results: [], total: 0, query: "xy" })
+      await server.call("search_knowledge", { bookId: "book_1", query: "xy", limit: 5 })
+      expect(fetchMock.lastCall()!.url).toContain("limit=5")
     })
 
     it("returns tool error on API failure", async () => {
       const server = await setup()
-      fetchMock.mockApiError("X", "fail")
+      fetchMock.mockHttpError(404, { error: "Book not found" })
       const result = asToolResult(
-        await server.call("search_knowledge", { bookId: "book_1", query: "x" })
+        await server.call("search_knowledge", { bookId: "book_1", query: "xy" })
       )
       expect(result.isError).toBe(true)
     })
