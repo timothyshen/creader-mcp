@@ -129,8 +129,12 @@ export class CreaderClient {
             try {
                 const errJson = (await res.json());
                 const errField = errJson.error;
-                if (typeof errField === "string")
-                    msg = errField;
+                if (typeof errField === "string") {
+                    // Scope failures reply {error:"Forbidden", type:"scope", message:
+                    // "This API key lacks the 'x' scope."} — the useful sentence is in
+                    // `message`, not `error`.
+                    msg = errJson.message || errField;
+                }
                 else if (errField?.message) {
                     msg = errField.message;
                     code = errField.code;

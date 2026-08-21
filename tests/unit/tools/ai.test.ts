@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { installFetchMock, type FetchMock } from "../../helpers/mock-fetch.js"
 import { FakeMcpServer, asToolResult } from "../../helpers/fake-mcp-server.js"
-import { fxChapter, fxGuardianRun, fxVectorCheck } from "../../helpers/fixtures.js"
+import {
+  fxChapter,
+  fxCharacter,
+  fxFactResult,
+  fxGuardianRun,
+  fxLocation,
+  fxNote,
+  fxEvent,
+  fxPlan,
+  fxVectorCheck,
+} from "../../helpers/fixtures.js"
 
 async function setup() {
   vi.resetModules()
@@ -18,11 +28,13 @@ describe("AI tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers the three live AI tools", async () => {
+  it("registers the five live AI tools", async () => {
     const server = await setup()
     expect(server.names().sort()).toEqual([
+      "extract_facts",
       "generate_outline",
       "guardian_check",
+      "orchestrate",
       "vector_check",
     ])
   })
@@ -179,6 +191,184 @@ describe("AI tools", () => {
       )
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toContain("down")
+    })
+  })
+
+  describe("extract_facts", () => {
+    const longChapter = {
+      ...fxChapter,
+      content: `<p>${"word ".repeat(60).trim()}</p>`, // 299 chars of prose once stripped
+    }
+
+    /** Queue the reads the tool always makes: chapter, then the 4 entity lists. */
+    function queueReads(overrides?: {
+      characters?: unknown[]
+      locations?: unknown[]
+      events?: unknown[]
+      notes?: unknown[]
+      chapter?: unknown
+    }) {
+      fetchMock
+        .mockSuccess(overrides?.chapter ?? longChapter)
+        .mockSuccess(overrides?.characters ?? [fxCharacter])
+        .mockSuccess(overrides?.locations ?? [fxLocation])
+        .mockSuccess(overrides?.events ?? [fxEvent])
+        .mockSuccess(overrides?.notes ?? [fxNote])
+    }
+
+    it("builds the entity snapshot itself and POSTs stripped prose to extract-facts", async () => {
+      const server = await setup()
+      queueReads()
+      fetchMock.mockRaw({ success: true, result: fxFactResult })
+
+      const result = asToolResult(
+        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
+      )
+
+      expect(result.isError).toBeUndefined()
+      const post = fetchMock.lastCall()!
+      expect(post.method).toBe("POST")
+      expect(post.url).toBe("https://test.creader.local/api/ai/extract-facts")
+      const body = post.body as {
+        bookId: string
+        chapterId: string
+        chapterContent: string
+        existingEntities: Array<Record<string, unknown>>
+      }
+      expect(body.bookId).toBe("book_1")
+      expect(body.chapterId).toBe("chap_1")
+      // Stripped, not the stored Tiptap HTML.
+      expect(body.chapterContent).not.toContain("<p>")
+      expect(body.chapterContent).toContain("word word")
+      // All four entity types are in the snapshot, in the server's shape.
+      expect(body.existingEntities).toContainEqual({
+        id: "char_1",
+        title: "Alice",
+        type: "character",
+        content: "A curious heroine.",
+        metadata: { role: "protagonist" },
+      })
+      expect(body.existingEntities).toContainEqual(
+        expect.objectContaining({ id: "loc_1", type: "location" })
+      )
+      expect(body.existingEntities).toContainEqual(
+        expect.objectContaining({ id: "evt_1", type: "event" })
+      )
+      expect(body.existingEntities).toContainEqual(
+        expect.objectContaining({ id: "note_1", type: "note" })
+      )
+      // Proposals are surfaced verbatim, still pending.
+      expect(result.content[0].text).toContain("Now queen of Wonderland")
+      expect(result.content[0].text).toContain("pending")
+    })
+
+    it("truncates snapshot entity content to the server's 500-char cap", async () => {
+      const server = await setup()
+      queueReads({
+        characters: [{ ...fxCharacter, description: "x".repeat(600) }],
+        locations: [],
+        events: [],
+        notes: [],
+      })
+      fetchMock.mockRaw({ success: true, result: fxFactResult })
+
+      await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
+
+      const body = fetchMock.lastCall()!.body as {
+        existingEntities: Array<{ content: string }>
+      }
+      expect(body.existingEntities[0].content).toHaveLength(500)
+    })
+
+    it("refuses a chapter below the server's 200-char minimum without spending quota", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxChapter) // 17 chars of prose
+      const result = asToolResult(
+        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("at least 200")
+      expect(fetchMock.calls.length).toBe(1)
+    })
+
+    it("refuses when the book has no entities — there is nothing to extract against", async () => {
+      const server = await setup()
+      queueReads({ characters: [], locations: [], events: [], notes: [] })
+      const result = asToolResult(
+        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("no knowledge entities")
+      // Chapter + 4 entity lists, and crucially no quota-spending POST.
+      expect(fetchMock.calls.length).toBe(5)
+    })
+
+    it("surfaces the server's truncation flag instead of implying full coverage", async () => {
+      const server = await setup()
+      queueReads()
+      fetchMock.mockRaw({ success: true, result: { ...fxFactResult, truncated: true } })
+      const result = asToolResult(
+        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
+      )
+      expect(result.content[0].text).toContain("first ~15,000 characters")
+    })
+  })
+
+  describe("orchestrate", () => {
+    it("POSTs intent with an empty outline and no context packet by default", async () => {
+      const server = await setup()
+      fetchMock.mockRaw({ success: true, plan: fxPlan })
+      const result = asToolResult(
+        await server.call("orchestrate", { intent: "Alice confronts the Queen" })
+      )
+      expect(result.isError).toBeUndefined()
+      const call = fetchMock.lastCall()!
+      expect(call.url).toBe("https://test.creader.local/api/ai/orchestrate")
+      // The route's schema requires `outline`, so an omitted one must go as "".
+      expect(call.body).toEqual({ intent: "Alice confronts the Queen", outline: "" })
+      // The plan itself is the payload, not the {success, plan} wrapper.
+      expect(result.content[0].text).toContain("no longer remembers her")
+      expect(result.content[0].text).not.toContain('"success"')
+    })
+
+    it("passes an explicit outline through", async () => {
+      const server = await setup()
+      fetchMock.mockRaw({ success: true, plan: fxPlan })
+      await server.call("orchestrate", { intent: "x", outline: "1. beat one" })
+      expect(fetchMock.lastCall()!.body).toMatchObject({ outline: "1. beat one" })
+    })
+
+    it("grounds the plan in the book's characters and locations when bookId is given", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess([fxCharacter])
+        .mockSuccess([fxLocation])
+        .mockRaw({ success: true, plan: fxPlan })
+
+      await server.call("orchestrate", { intent: "x", bookId: "book_1" })
+
+      const body = fetchMock.lastCall()!.body as {
+        contextPacket: { entities: unknown[] }
+      }
+      // Names and roles only — the server keeps just the first 1,000 chars of
+      // this once stringified, so descriptions would crowd out the names.
+      expect(body.contextPacket.entities).toEqual([
+        { name: "Alice", type: "character", role: "protagonist" },
+        { name: "Wonderland", type: "location" },
+      ])
+    })
+
+    it("reports a missing 'ai' scope with the server's useful sentence", async () => {
+      const server = await setup()
+      fetchMock.mockHttpError(403, {
+        error: "Forbidden",
+        type: "scope",
+        message: "This API key lacks the 'ai' scope.",
+      })
+      const result = asToolResult(await server.call("orchestrate", { intent: "x" }))
+      expect(result.isError).toBe(true)
+      // "Forbidden" alone tells the caller nothing actionable.
+      expect(result.content[0].text).toContain("lacks the 'ai' scope")
     })
   })
 

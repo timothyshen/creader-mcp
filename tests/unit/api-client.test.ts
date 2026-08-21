@@ -171,6 +171,21 @@ describe("CreaderClient", () => {
       await expect(c.postRaw("/api/raw")).rejects.toThrow("forbidden")
     })
 
+    it("prefers a top-level message over a generic string error (scope 403 shape)", async () => {
+      const { CreaderClient } = await loadClient()
+      const c = new CreaderClient("k", "https://api.test")
+      fetchMock.mockHttpError(403, {
+        error: "Forbidden",
+        type: "scope",
+        message: "This API key lacks the 'ai' scope.",
+      })
+      // "Forbidden" is the label; the sentence the caller can act on is in
+      // `message`.
+      await expect(c.postRaw("/api/ai/orchestrate")).rejects.toThrow(
+        "This API key lacks the 'ai' scope."
+      )
+    })
+
     it("throws with the API object error message on non-2xx", async () => {
       const { CreaderClient } = await loadClient()
       const c = new CreaderClient("k", "https://api.test")

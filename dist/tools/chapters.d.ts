@@ -1,5 +1,6 @@
 /**
- * Chapter management MCP tools: list_chapters, get_chapter, create_chapter, update_chapter
+ * Chapter management MCP tools: list_chapters, get_chapter, create_chapter,
+ * update_chapter, delete_chapter, reorder_chapters
  *
  * ## Why update_chapter tracks a content baseline
  *

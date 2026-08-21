@@ -1,11 +1,16 @@
 import type {
+  Act,
   Book,
   Chapter,
   Character,
+  FactExtractionResult,
+  GenerationPlan,
   Location,
   TimelineEvent,
   Note,
+  Scene,
   SemanticRelation,
+  Volume,
   WritingStats,
   QuotaInfo,
   VectorCheckResponse,
@@ -93,6 +98,76 @@ export const fxQuota: QuotaInfo = {
   tokenUsed: 25000,
   tokenBonus: 5000,
   remaining: 80000,
+}
+
+export const fxVolume: Volume = {
+  id: "vol_1",
+  bookId: "book_1",
+  title: "Volume One",
+  description: "The beginning.",
+  synopsis: null,
+  notes: null,
+  orderIndex: 0,
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-01T00:00:00Z",
+  _count: { chapters: 2 },
+}
+
+export const fxAct: Act = {
+  id: "act_1",
+  bookId: "book_1",
+  name: "Act One",
+  description: "Setup.",
+  tags: [],
+  alternateLabel: null,
+  volumeId: "vol_1",
+  orderIndex: 0,
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-01T00:00:00Z",
+}
+
+export const fxScene: Scene = {
+  id: "scene_1",
+  bookId: "book_1",
+  title: "Opening",
+  synopsis: "Alice wakes.",
+  orderIndex: 0,
+  status: "draft",
+  actId: "act_1",
+  chapterId: "chap_1",
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-01T00:00:00Z",
+}
+
+export const fxFactResult: FactExtractionResult = {
+  chapterId: "chap_1",
+  factUpdates: [
+    {
+      entityId: "char_1",
+      entityTitle: "Alice",
+      entityType: "character",
+      updateType: "status_change",
+      fieldPath: "description",
+      proposedValue: "Now queen of Wonderland",
+      confidence: 0.9,
+      textEvidence: "they crowned her that morning",
+      chapterId: "chap_1",
+      status: "pending",
+    },
+  ],
+  truncated: false,
+  extractedAt: "2026-08-21T00:00:00Z",
+}
+
+export const fxPlan: GenerationPlan = {
+  sceneBreakdown: [
+    { order: 1, purpose: "Introduce the threat", requiredEntities: ["Alice"], emotionalBeat: "unease" },
+    { order: 2, purpose: "Force a choice", requiredEntities: ["Alice", "Wonderland"], emotionalBeat: "resolve" },
+  ],
+  consistencyConstraints: ["Alice cannot yet know the Queen's secret"],
+  styleDirectives: ["close third person", "short sentences in action"],
+  wordTarget: 1800,
+  creativePrompt: "Alice returns to a Wonderland that no longer remembers her.",
 }
 
 export const fxVectorCheck: VectorCheckResponse = {

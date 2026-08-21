@@ -19,12 +19,14 @@ describe("chapter tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers all four chapter tools", async () => {
+  it("registers all six chapter tools", async () => {
     const server = await setup()
     expect(server.names().sort()).toEqual([
       "create_chapter",
+      "delete_chapter",
       "get_chapter",
       "list_chapters",
+      "reorder_chapters",
       "update_chapter",
     ])
   })
@@ -237,6 +239,181 @@ describe("chapter tools", () => {
       )
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toContain("nope")
+    })
+  })
+
+  describe("delete_chapter", () => {
+    it("DELETEs the chapter and warns that later chapters were renumbered", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ message: "Chapter deleted successfully" })
+      const result = asToolResult(await server.call("delete_chapter", { chapterId: "chap_1" }))
+      expect(result.isError).toBeUndefined()
+      expect(result.content[0].text).toContain("Deleted chapter chap_1")
+      expect(result.content[0].text).toContain("renumbered")
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("DELETE")
+      expect(call.url).toBe("https://test.creader.local/api/chapters/chap_1")
+    })
+
+    it("drops the chapter's content baseline along with the chapter", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess(fxChapter)
+        .mockSuccess({ message: "Chapter deleted successfully" })
+
+      await server.call("get_chapter", { chapterId: "chap_1" })
+      await server.call("delete_chapter", { chapterId: "chap_1" })
+
+      // A baseline for a deleted row is a lie — a later content write must be
+      // refused for lack of one, not sent with a fingerprint of dead prose.
+      const result = asToolResult(
+        await server.call("update_chapter", { chapterId: "chap_1", content: "<p>x</p>" })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("baseContentHash")
+      expect(fetchMock.calls.length).toBe(2)
+    })
+
+    it("propagates API errors (e.g. a key without the delete scope)", async () => {
+      const server = await setup()
+      fetchMock.mockHttpError(403, {
+        success: false,
+        error: { code: "FORBIDDEN", message: "This API key lacks the 'delete' scope." },
+      })
+      const result = asToolResult(await server.call("delete_chapter", { chapterId: "chap_1" }))
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("'delete' scope")
+    })
+  })
+
+  describe("reorder_chapters", () => {
+    const chA = { ...fxChapter, id: "ch_a", title: "A", orderIndex: 0 }
+    const chB = { ...fxChapter, id: "ch_b", title: "B", orderIndex: 1 }
+    const chC = { ...fxChapter, id: "ch_c", title: "C", orderIndex: 2 }
+
+    it("PATCHes every chapter whose position changed, in list order, without a content guard", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess([chA, chB, chC])
+        .mockSuccess({ ...chC, orderIndex: 0 })
+        .mockSuccess({ ...chA, orderIndex: 1 })
+        .mockSuccess({ ...chB, orderIndex: 2 })
+
+      const result = asToolResult(
+        await server.call("reorder_chapters", { bookId: "book_1", chapterIds: ["ch_c", "ch_a", "ch_b"] })
+      )
+
+      expect(result.isError).toBeUndefined()
+      expect(result.content[0].text).toContain("moved 3 of 3")
+      const patches = fetchMock.calls.slice(1)
+      expect(patches.map(c => c.url)).toEqual([
+        "https://test.creader.local/api/chapters/ch_c",
+        "https://test.creader.local/api/chapters/ch_a",
+        "https://test.creader.local/api/chapters/ch_b",
+      ])
+      expect(patches.map(c => c.body)).toEqual([
+        { orderIndex: 0 },
+        { orderIndex: 1 },
+        { orderIndex: 2 },
+      ])
+      // An orderIndex-only PATCH must not carry the CAS guard — the server
+      // arms it only for content writes, and a hash here would be noise.
+      for (const p of patches) {
+        expect(p.method).toBe("PATCH")
+        expect(p.body).not.toHaveProperty("baseContentHash")
+        expect(p.body).not.toHaveProperty("content")
+      }
+    })
+
+    it("writes only the chapters that actually move", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess([chA, chB, chC])
+        .mockSuccess({ ...chC, orderIndex: 1 })
+        .mockSuccess({ ...chB, orderIndex: 2 })
+
+      await server.call("reorder_chapters", { bookId: "book_1", chapterIds: ["ch_a", "ch_c", "ch_b"] })
+
+      // ch_a is already at 0 — writing it anyway would be a pointless write.
+      const patched = fetchMock.calls.slice(1).map(c => c.url)
+      expect(patched).toEqual([
+        "https://test.creader.local/api/chapters/ch_c",
+        "https://test.creader.local/api/chapters/ch_b",
+      ])
+    })
+
+    it("is a no-op when the requested order matches the server's", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess([chA, chB, chC])
+      const result = asToolResult(
+        await server.call("reorder_chapters", { bookId: "book_1", chapterIds: ["ch_a", "ch_b", "ch_c"] })
+      )
+      expect(result.isError).toBeUndefined()
+      expect(result.content[0].text).toContain("already in the requested order")
+      expect(fetchMock.calls.length).toBe(1)
+    })
+
+    it("rejects a partial list and names the missing chapters, writing nothing", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess([chA, chB, chC])
+      const result = asToolResult(
+        await server.call("reorder_chapters", { bookId: "book_1", chapterIds: ["ch_c", "ch_a"] })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("missing from your list: ch_b")
+      expect(fetchMock.calls.length).toBe(1)
+    })
+
+    it("rejects IDs from outside the book and duplicates", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess([chA, chB])
+      const result = asToolResult(
+        await server.call("reorder_chapters", {
+          bookId: "book_1",
+          chapterIds: ["ch_a", "ch_b", "ch_zz", "ch_a"],
+        })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("not in this book: ch_zz")
+      expect(result.content[0].text).toContain("duplicate")
+      expect(fetchMock.calls.length).toBe(1)
+    })
+
+    it("re-reads the chapter list even when a fresh cached copy exists", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess([chA, chB, chC]) // list_chapters — populates the cache
+        .mockSuccess([chA, chB, chC]) // reorder's forced re-read
+        .mockSuccess({ ...chB, orderIndex: 0 })
+        .mockSuccess({ ...chA, orderIndex: 1 })
+
+      await server.call("list_chapters", { bookId: "book_1" })
+      await server.call("reorder_chapters", { bookId: "book_1", chapterIds: ["ch_b", "ch_a", "ch_c"] })
+
+      // Planning writes from the 60s cache would reorder against a stale
+      // snapshot of the book — the tool must invalidate and re-fetch.
+      const gets = fetchMock.calls.filter(c => c.method === "GET")
+      expect(gets.length).toBe(2)
+    })
+
+    it("reports exactly how far it got when a PATCH fails partway", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess([chA, chB, chC])
+        .mockSuccess({ ...chC, orderIndex: 0 })
+        .mockHttpError(500, { success: false, error: { code: "OOPS", message: "db down" } })
+
+      const result = asToolResult(
+        await server.call("reorder_chapters", { bookId: "book_1", chapterIds: ["ch_c", "ch_a", "ch_b"] })
+      )
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("Reorder interrupted at chapter ch_a")
+      expect(result.content[0].text).toContain("db down")
+      expect(result.content[0].text).toContain("Moved 1 of 3")
+      expect(result.content[0].text).toContain("ch_c")
+      // No blind retry of the failed or remaining writes.
+      expect(fetchMock.calls.length).toBe(3)
     })
   })
 })

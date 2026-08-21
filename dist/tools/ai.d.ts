@@ -1,5 +1,6 @@
 /**
- * AI MCP tools: generate_outline, guardian_check, vector_check
+ * AI MCP tools: generate_outline, guardian_check, vector_check,
+ * extract_facts, orchestrate
  *
  * `guardian_check` replaces the three tools that fronted the pre-v0.13
  * Guardian routes (consistency_check / analyze_book / proofread). Those

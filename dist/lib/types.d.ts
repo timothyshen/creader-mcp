@@ -153,6 +153,99 @@ export interface GuardianRunResponse {
         totalTokens: number;
     };
 }
+export interface Volume {
+    id: string;
+    bookId: string;
+    title: string;
+    description?: string | null;
+    synopsis?: string | null;
+    notes?: string | null;
+    orderIndex: number;
+    createdAt: string;
+    updatedAt: string;
+    _count?: {
+        chapters: number;
+    };
+}
+export interface Act {
+    id: string;
+    bookId: string;
+    /** Acts are named, not titled — the API field really is `name`. */
+    name: string;
+    description?: string | null;
+    tags?: string[];
+    alternateLabel?: string | null;
+    volumeId: string | null;
+    orderIndex: number;
+    createdAt: string;
+    updatedAt: string;
+}
+export interface Scene {
+    id: string;
+    bookId: string;
+    title: string;
+    synopsis?: string | null;
+    description?: string | null;
+    tags?: string[];
+    orderIndex: number;
+    status?: string | null;
+    actId: string | null;
+    chapterId: string | null;
+    pov?: string | null;
+    sceneTime?: string | null;
+    mood?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+/** Entity snapshot sent TO the route (server caps: 200 items, 500 chars each). */
+export interface EntitySnapshot {
+    id: string;
+    title: string;
+    type: string;
+    content: string;
+    metadata?: Record<string, unknown>;
+}
+export interface FactUpdate {
+    entityId: string;
+    entityTitle?: string;
+    entityType?: string;
+    updateType?: string;
+    fieldPath?: string;
+    proposedValue?: unknown;
+    confidence?: unknown;
+    textEvidence?: string;
+    chapterId?: string;
+    status?: string;
+}
+export interface FactExtractionResult {
+    chapterId: string;
+    factUpdates: FactUpdate[];
+    /** True when the server analysed only a prefix of the chapter. */
+    truncated?: boolean;
+    extractedAt?: unknown;
+}
+export interface ExtractFactsResponse {
+    success: boolean;
+    result: FactExtractionResult;
+}
+export interface GenerationScene {
+    order: number;
+    purpose: string;
+    requiredEntities: string[];
+    settingId?: string;
+    emotionalBeat: string;
+}
+export interface GenerationPlan {
+    sceneBreakdown: GenerationScene[];
+    consistencyConstraints: string[];
+    styleDirectives: string[];
+    wordTarget: number;
+    creativePrompt: string;
+}
+export interface OrchestrateResponse {
+    success: boolean;
+    plan: GenerationPlan;
+}
 export interface KnowledgeSearchResult {
     id: string;
     type: "character" | "location" | "event" | "note";
