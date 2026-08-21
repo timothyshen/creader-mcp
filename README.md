@@ -109,22 +109,29 @@ Structure writes stay in the editor for now.
 
 ### Knowledge Base (14)
 
+> **Deprecation notice (v1.3.0):** the 12 per-type CRUD tools below are
+> deprecated. v2.0.0 consolidates them into `create_entity` / `update_entity` /
+> `delete_entity` with a `type` discriminator (see
+> [docs/UPGRADE_PLAN.md](docs/UPGRADE_PLAN.md)). They remain **fully
+> functional throughout 1.x** — keep using them until v2.0.0 ships, then
+> migrate with the table in that release's notes.
+
 | Tool | Description |
 |------|-------------|
 | `search_knowledge` | Substring search across characters, locations, events, and notes (case-insensitive, CJK-safe; queries must be 2+ characters) |
 | `list_knowledge` | List characters, locations, or events in a book |
-| `create_character` | Create a character (protagonist, antagonist, supporting, minor) |
-| `create_location` | Create a location |
-| `create_event` | Create a timeline event |
-| `create_note` | Create a note (worldbuilding, research, general) |
-| `update_character` | Update a character's fields |
-| `update_location` | Update a location's fields |
-| `update_event` | Update a timeline event's fields |
-| `update_note` | Update a note's fields |
-| `delete_character` | Delete a character |
-| `delete_location` | Delete a location |
-| `delete_event` | Delete a timeline event |
-| `delete_note` | Delete a note |
+| `create_character` *(deprecated)* | Create a character (protagonist, antagonist, supporting, minor) |
+| `create_location` *(deprecated)* | Create a location |
+| `create_event` *(deprecated)* | Create a timeline event |
+| `create_note` *(deprecated)* | Create a note (worldbuilding, research, general) |
+| `update_character` *(deprecated)* | Update a character's fields |
+| `update_location` *(deprecated)* | Update a location's fields |
+| `update_event` *(deprecated)* | Update a timeline event's fields |
+| `update_note` *(deprecated)* | Update a note's fields |
+| `delete_character` *(deprecated)* | Delete a character |
+| `delete_location` *(deprecated)* | Delete a location |
+| `delete_event` *(deprecated)* | Delete a timeline event |
+| `delete_note` *(deprecated)* | Delete a note |
 
 ### Semantic Relations (4)
 

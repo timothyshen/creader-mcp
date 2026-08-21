@@ -32,6 +32,11 @@ A book is organised volume → act → chapter → scene.
 - `create_event` / `update_event` / `delete_event` — Manage timeline events
 - `create_note` / `update_note` / `delete_note` — Notes (worldbuilding, research, communication)
 
+> The 12 per-type CRUD tools above are deprecated as of v1.3.0: v2.0.0 will
+> consolidate them into `create_entity` / `update_entity` / `delete_entity`
+> with a `type` discriminator. They still work throughout 1.x — keep using
+> them until the v2.0.0 replacements actually exist.
+
 ### Relations
 - `list_relations` / `create_relation` / `update_relation` / `delete_relation` — Typed entity-to-entity relationships with inverse types and strength scores
 

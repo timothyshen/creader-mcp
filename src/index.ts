@@ -23,7 +23,7 @@ import { registerRelationTools } from "./tools/relations.js"
 import { registerAITools } from "./tools/ai.js"
 
 const server = new McpServer(
-  { name: "creader", version: "1.2.0" },
+  { name: "creader", version: "1.3.0" },
   {
     instructions: [
       "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
@@ -32,6 +32,7 @@ const server = new McpServer(
       "Use list_chapters to see chapter IDs, then get_chapter to read content. Always get_chapter before update_chapter when writing prose — update_chapter needs the baseContentHash get_chapter returns, and rejects the write as a conflict if the editor changed the chapter meanwhile.",
       "delete_chapter is permanent and renumbers later chapters. reorder_chapters takes the COMPLETE list of chapter IDs in the new order.",
       "search_knowledge searches across all entity types — use the type filter to narrow results.",
+      "Deprecation notice: the 12 per-type knowledge CRUD tools (create/update/delete_ × character/location/event/note) will be consolidated into create_entity/update_entity/delete_entity with a type discriminator in v2.0.0. They remain fully functional throughout 1.x — keep using them for now.",
       "Use list_relations to see entity-to-entity relationships (e.g. character allies, location containment).",
       "AI checks: guardian_check runs the 5-layer narrative Guardian on one chapter — pick layers (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure) and a costBudget; the default 'local' budget is free and makes no model calls, 'api-heavy' spends token quota. vector_check finds cross-book semantic conflicts in already-indexed content.",
       "AI writing aids (both spend token quota, need the 'ai' scope): extract_facts proposes knowledge-base updates from a chapter's prose — apply accepted ones with update_* tools; orchestrate turns an intent into a structured generation plan to guide drafting.",
