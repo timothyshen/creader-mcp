@@ -167,10 +167,15 @@ export class CreaderClient {
       try {
         const errJson = (await res.json()) as {
           error?: string | { message?: string; code?: string }
+          message?: string
         }
         const errField = errJson.error
-        if (typeof errField === "string") msg = errField
-        else if (errField?.message) {
+        if (typeof errField === "string") {
+          // Scope failures reply {error:"Forbidden", type:"scope", message:
+          // "This API key lacks the 'x' scope."} — the useful sentence is in
+          // `message`, not `error`.
+          msg = errJson.message || errField
+        } else if (errField?.message) {
           msg = errField.message
           code = errField.code
         }

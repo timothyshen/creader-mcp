@@ -1,5 +1,6 @@
 /**
- * Chapter management MCP tools: list_chapters, get_chapter, create_chapter, update_chapter
+ * Chapter management MCP tools: list_chapters, get_chapter, create_chapter,
+ * update_chapter, delete_chapter, reorder_chapters
  *
  * ## Why update_chapter tracks a content baseline
  *
@@ -172,6 +173,113 @@ export function registerChapterTools(server: McpServer) {
             isError: true,
           }
         }
+        return toolError(error)
+      }
+    }
+  )
+
+  server.tool(
+    "delete_chapter",
+    "Permanently delete a chapter. Hard delete — the chapter's scenes are deleted with it, and every later chapter in the book is renumbered down by one to close the gap. Only the book owner can delete, and the API key needs the 'delete' scope.",
+    { chapterId: z.string().describe("Chapter ID") },
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    async ({ chapterId }) => {
+      try {
+        const client = getClient()
+        await client.delete(`/api/chapters/${chapterId}`)
+        // The row is gone; a baseline for it could only mislead a later write
+        // to a recycled conversation about this id.
+        baselines.delete(chapterId)
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Deleted chapter ${chapterId} (its scenes went with it). Later chapters were renumbered to close the gap — re-run list_chapters before anything order-sensitive.`,
+          }],
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    }
+  )
+
+  server.tool(
+    "reorder_chapters",
+    "Reorder a book's chapters. Pass the COMPLETE list of the book's chapter IDs in the desired reading order — a partial list is rejected, because the server has no atomic reorder endpoint and a partial write would leave duplicate positions. Only chapters whose position actually changes are written. If a failure interrupts the run, the reply says exactly which chapters moved; re-running with the same list is safe.",
+    {
+      bookId: z.string().describe("Book ID"),
+      chapterIds: z
+        .array(z.string())
+        .min(1)
+        .describe("Every chapter ID in the book, in the desired reading order"),
+    },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    async ({ bookId, chapterIds }) => {
+      try {
+        const client = getClient()
+        const listPath = `/api/books/${bookId}/chapters`
+        // Planning writes from a cached list would reorder against a stale
+        // picture of the book — always re-read.
+        client.invalidate(listPath)
+        const current = await client.get<Chapter[]>(listPath)
+
+        const serverIds = new Set(current.map(c => c.id))
+        const requestedIds = new Set(chapterIds)
+        const missing = current.filter(c => !requestedIds.has(c.id)).map(c => c.id)
+        const unknown = chapterIds.filter(id => !serverIds.has(id))
+        const problems: string[] = []
+        if (missing.length) problems.push(`missing from your list: ${missing.join(", ")}`)
+        if (unknown.length) problems.push(`not in this book: ${unknown.join(", ")}`)
+        if (chapterIds.length !== requestedIds.size) problems.push("your list contains duplicate IDs")
+        if (problems.length) {
+          return toolError(
+            new Error(
+              `reorder_chapters needs the complete chapter list in the new order — ${problems.join("; ")}. Call list_chapters and try again.`
+            )
+          )
+        }
+
+        const orderById = new Map(current.map(c => [c.id, c.orderIndex]))
+        const moves = chapterIds
+          .map((id, index) => ({ id, index }))
+          .filter(m => orderById.get(m.id) !== m.index)
+
+        if (!moves.length) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: "Chapters are already in the requested order — nothing to write.",
+            }],
+          }
+        }
+
+        // Sequential on purpose: the server has no transaction across these
+        // PATCHes, so on a failure we can report exactly how far we got.
+        // orderIndex-only PATCHes carry no baseContentHash — the server's
+        // conflict guard only arms when content is written.
+        const done: string[] = []
+        for (const m of moves) {
+          try {
+            await client.patch<Chapter>(`/api/chapters/${m.id}`, { orderIndex: m.index })
+            done.push(m.id)
+          } catch (error) {
+            const failMsg = error instanceof Error ? error.message : String(error)
+            return {
+              content: [{
+                type: "text" as const,
+                text: `Reorder interrupted at chapter ${m.id} (${failMsg}). Moved ${done.length} of ${moves.length} chapters${done.length ? ` (${done.join(", ")})` : ""}; the rest keep their old positions, so the book may show a mixed order until you re-run reorder_chapters with the same list.`,
+              }],
+              isError: true,
+            }
+          }
+        }
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Reordered chapters: moved ${moves.length} of ${chapterIds.length} (the rest were already in place).`,
+          }],
+        }
+      } catch (error) {
         return toolError(error)
       }
     }

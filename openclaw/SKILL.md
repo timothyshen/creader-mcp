@@ -8,26 +8,39 @@ You have access to Creader, an immersive writing platform with a rich knowledge 
 - `list_books` — See all books in the user's library
 - `get_book` — Get details about a specific book
 - `create_book` — Create a new book (novel, autobiography, worldbook, encyclopedia)
+- `get_book_context` — Load metadata + chapters + characters + locations + events in one call
 
 ### Chapters
 - `list_chapters` — List chapters in a book (titles + metadata)
-- `get_chapter` — Read a chapter's full content
-- `update_chapter` — Write or update a chapter's content
+- `get_chapter` — Read a chapter's full content (returns the `baseContentHash` needed for content writes)
+- `create_chapter` — Create a new chapter
+- `update_chapter` — Write or update a chapter; content writes are conflict-guarded via `baseContentHash`
+- `delete_chapter` — Permanently delete a chapter (its scenes go with it; later chapters are renumbered)
+- `reorder_chapters` — Reorder chapters; pass the complete chapter-ID list in the new order
+
+### Structure (read-only)
+A book is organised volume → act → chapter → scene.
+- `list_volumes` — Volumes with chapter counts
+- `list_acts` — Acts and which volume each belongs to
+- `list_scenes` — Scenes with their parent chapter/act, status, and synopsis
 
 ### Knowledge Base
-- `search_knowledge` — Full-text search across all entities in a book
-- `list_characters` / `create_character` — Manage characters
-- `list_locations` / `create_location` — Manage locations
-- `list_events` / `create_event` — Manage timeline events
-- `create_note` — Create notes (worldbuilding, research, communication)
+- `search_knowledge` — Substring search across all entities in a book
+- `list_knowledge` — List characters, locations, or events
+- `create_character` / `update_character` / `delete_character` — Manage characters
+- `create_location` / `update_location` / `delete_location` — Manage locations
+- `create_event` / `update_event` / `delete_event` — Manage timeline events
+- `create_note` / `update_note` / `delete_note` — Notes (worldbuilding, research, communication)
+
+### Relations
+- `list_relations` / `create_relation` / `update_relation` / `delete_relation` — Typed entity-to-entity relationships with inverse types and strength scores
 
 ### AI
-- `chat` — Chat with AI about a story (context-aware)
 - `generate_outline` — Generate a story outline from a premise
-- `consistency_check` — Fast quota-cheap consistency scan across a book
-- `analyze_book` — Deep Guardian analysis of one chapter (vector-aware); returns structured issues with severity, evidence, and suggestion
+- `guardian_check` — 5-layer narrative Guardian on one chapter (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure); the default `local` budget is free, `api-heavy` spends token quota
 - `vector_check` — Cross-book semantic conflict detection using embeddings (duplicates, character contradictions, timeline, location mismatch)
-- `proofread` — Publishing-grade proofread of a chapter; returns typo/grammar/punctuation issues with char-offset textPosition and suggestedFix
+- `extract_facts` — Propose knowledge-base updates from a chapter's prose; proposals come back pending — apply accepted ones with the `update_*` tools (spends token quota)
+- `orchestrate` — Turn a writing intent into a structured generation plan: scene breakdown, constraints, style directives, word target (spends token quota)
 
 ### Stats & Publishing
 - `get_writing_stats` — Writing streak and word counts

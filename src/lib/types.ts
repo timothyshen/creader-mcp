@@ -161,6 +161,120 @@ export interface GuardianRunResponse {
   usage: { totalTokens: number }
 }
 
+// ── Structure (volumes / acts / scenes) ────────────────────────────
+// The v1.0 hierarchy is volume → act → chapter → scene. Chapters carry
+// volumeId/actId; acts carry volumeId; scenes carry actId/chapterId. Kept
+// loose on optional fields so upstream additions don't break the MCP build.
+
+export interface Volume {
+  id: string
+  bookId: string
+  title: string
+  description?: string | null
+  synopsis?: string | null
+  notes?: string | null
+  orderIndex: number
+  createdAt: string
+  updatedAt: string
+  _count?: { chapters: number }
+}
+
+export interface Act {
+  id: string
+  bookId: string
+  /** Acts are named, not titled — the API field really is `name`. */
+  name: string
+  description?: string | null
+  tags?: string[]
+  alternateLabel?: string | null
+  volumeId: string | null
+  orderIndex: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Scene {
+  id: string
+  bookId: string
+  title: string
+  synopsis?: string | null
+  description?: string | null
+  tags?: string[]
+  orderIndex: number
+  status?: string | null
+  actId: string | null
+  chapterId: string | null
+  pov?: string | null
+  sceneTime?: string | null
+  mood?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// ── Fact extraction (/api/ai/extract-facts) ────────────────────────
+// The route replies with bare `{ success, result }`, not the envelope.
+// FactUpdate is surfaced verbatim to the caller, so it stays loose.
+
+/** Entity snapshot sent TO the route (server caps: 200 items, 500 chars each). */
+export interface EntitySnapshot {
+  id: string
+  title: string
+  type: string
+  content: string
+  metadata?: Record<string, unknown>
+}
+
+export interface FactUpdate {
+  entityId: string
+  entityTitle?: string
+  entityType?: string
+  updateType?: string
+  fieldPath?: string
+  proposedValue?: unknown
+  confidence?: unknown
+  textEvidence?: string
+  chapterId?: string
+  status?: string
+}
+
+export interface FactExtractionResult {
+  chapterId: string
+  factUpdates: FactUpdate[]
+  /** True when the server analysed only a prefix of the chapter. */
+  truncated?: boolean
+  extractedAt?: unknown
+}
+
+export interface ExtractFactsResponse {
+  success: boolean
+  result: FactExtractionResult
+}
+
+// ── Generation planning (/api/ai/orchestrate) ──────────────────────
+// Mirror of generationPlanSchema in creader-editor's types/generation-types.ts.
+// Also a bare `{ success, plan }` reply.
+
+export interface GenerationScene {
+  order: number
+  purpose: string
+  requiredEntities: string[]
+  settingId?: string
+  emotionalBeat: string
+}
+
+export interface GenerationPlan {
+  sceneBreakdown: GenerationScene[]
+  consistencyConstraints: string[]
+  styleDirectives: string[]
+  wordTarget: number
+  creativePrompt: string
+}
+
+export interface OrchestrateResponse {
+  success: boolean
+  plan: GenerationPlan
+}
+
 // ── Knowledge search (/knowledge/search) ───────────────────────────
 
 export interface KnowledgeSearchResult {

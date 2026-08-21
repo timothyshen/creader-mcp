@@ -20,7 +20,7 @@ The result: AI-assisted writing that stays consistent across 100+ chapters and c
 ```
 ┌─────────────────┐     MCP (stdio)     ┌──────────────────┐     HTTPS     ┌─────────────┐
 │  Claude / GPT   │ ◄────────────────► │  creader-mcp     │ ◄──────────► │  Creader API │
-│  or any MCP     │     32 tools        │  (this server)   │   REST+JSON  │  creader.io  │
+│  or any MCP     │     39 tools        │  (this server)   │   REST+JSON  │  creader.io  │
 │  client         │                     │                  │              │              │
 └─────────────────┘                     │  - TTL cache     │              │  - Books     │
                                         │  - Error recovery│              │  - Chapters  │
@@ -72,7 +72,7 @@ Then set your API key in the environment or `.env` file.
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (32)
+## Tools (39)
 
 ### Books (4)
 
@@ -83,7 +83,7 @@ Then set your API key in the environment or `.env` file.
 | `create_book` | Create a new book (novel, autobiography, worldbook, encyclopedia) |
 | `get_book_context` | Get full book context in one call — metadata, chapters, characters, locations, events |
 
-### Chapters (4)
+### Chapters (6)
 
 | Tool | Description |
 |------|-------------|
@@ -91,6 +91,21 @@ Then set your API key in the environment or `.env` file.
 | `get_chapter` | Read a chapter's full content, plus the `baseContentHash` to pass back when writing |
 | `create_chapter` | Create a new chapter |
 | `update_chapter` | Write or update a chapter. Prose writes carry a `baseContentHash` and are rejected as a conflict — never silently overwritten — if the editor changed the chapter meanwhile |
+| `delete_chapter` | Permanently delete a chapter (hard delete; its scenes go with it, later chapters are renumbered). Needs the `delete` API-key scope; book owner only |
+| `reorder_chapters` | Reorder a book's chapters. Takes the complete chapter-ID list in the new order; writes only the positions that changed. The server has no atomic reorder, so an interrupted run reports exactly which chapters moved and is safe to re-run |
+
+### Structure (3)
+
+Creader organises a book as **volume → act → chapter → scene**. These read-only
+tools expose the levels around chapters, so an agent can navigate the whole
+spine (acts carry their `volumeId`; scenes carry their `chapterId`/`actId`).
+Structure writes stay in the editor for now.
+
+| Tool | Description |
+|------|-------------|
+| `list_volumes` | List a book's volumes with chapter counts |
+| `list_acts` | List a book's acts and which volume each belongs to |
+| `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
 
 ### Knowledge Base (14)
 
@@ -120,13 +135,15 @@ Then set your API key in the environment or `.env` file.
 | `update_relation` | Update a relation's type, description, or strength |
 | `delete_relation` | Delete a relation |
 
-### AI (3)
+### AI (5)
 
 | Tool | Description |
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
 | `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation |
 | `vector_check` | Cross-book semantic conflict detection via embeddings. Detects duplicates, character contradictions, timeline inconsistencies, and location mismatches. Operates on already-indexed content |
+| `extract_facts` | Propose knowledge-base updates from one chapter's prose (status changes, new details, relationship changes to entities that already exist). The tool builds the entity snapshot itself; proposals come back `pending` with text evidence — apply the ones you accept with the `update_*` tools. Spends token quota; needs the `ai` scope |
+| `orchestrate` | Turn a writing intent (plus optional outline and book context) into a structured generation plan: scene breakdown, consistency constraints, style directives, word target, creative prompt. Spends token quota; needs the `ai` scope |
 
 #### Guardian layers and cost
 
@@ -169,7 +186,10 @@ New to Creader? This guide explains **which tool to use for each type of content
 
 ```
 Book
+├── Volumes           ← Top-level grouping (list_volumes)
+│   └── Acts          ← Group chapters within a volume (list_acts)
 ├── Chapters          ← Actual prose, outlines, and story content
+│   └── Scenes        ← Beats within a chapter (list_scenes)
 ├── Knowledge Base
 │   ├── Characters    ← People, creatures, named entities in your world
 │   ├── Locations     ← Places — cities, rooms, planets, forests

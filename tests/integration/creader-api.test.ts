@@ -66,6 +66,28 @@ describe.skipIf(!token)("Creader API integration", () => {
   )
 
   it(
+    "reads the structural spine (volumes/acts/scenes) of the first book",
+    async () => {
+      const client = await makeClient()
+      const books = await client.get<Array<{ id: string }>>("/api/books")
+      if (!books.length) return // account with no books — nothing to walk
+
+      const bookId = books[0].id
+      const [volumes, acts, scenes] = await Promise.all([
+        client.get<unknown>(`/api/books/${bookId}/volumes`),
+        client.get<unknown>(`/api/books/${bookId}/acts`),
+        client.get<unknown>(`/api/books/${bookId}/scenes`),
+      ])
+      // All three routes reply with the enveloped array shape — a route
+      // rename or envelope change upstream surfaces here, not in production.
+      expect(Array.isArray(volumes)).toBe(true)
+      expect(Array.isArray(acts)).toBe(true)
+      expect(Array.isArray(scenes)).toBe(true)
+    },
+    30_000
+  )
+
+  it(
     "rejects requests with an invalid token",
     async () => {
       const { CreaderClient } = await import("../../src/lib/api-client.js")
