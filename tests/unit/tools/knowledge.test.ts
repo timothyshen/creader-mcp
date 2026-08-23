@@ -38,6 +38,43 @@ describe("knowledge tools", () => {
     ])
   })
 
+  describe("v1.3.0 deprecation bridge", () => {
+    const DEPRECATED: Record<string, string> = {
+      create_character: `create_entity(type: "character")`,
+      create_location: `create_entity(type: "location")`,
+      create_event: `create_entity(type: "event")`,
+      create_note: `create_entity(type: "note")`,
+      update_character: `update_entity(type: "character")`,
+      update_location: `update_entity(type: "location")`,
+      update_event: `update_entity(type: "event")`,
+      update_note: `update_entity(type: "note")`,
+      delete_character: `delete_entity(type: "character")`,
+      delete_location: `delete_entity(type: "location")`,
+      delete_event: `delete_entity(type: "event")`,
+      delete_note: `delete_entity(type: "note")`,
+    }
+
+    it("marks all 12 per-type CRUD tools deprecated, each naming its v2.0.0 replacement", async () => {
+      const server = await setup()
+      for (const [name, replacement] of Object.entries(DEPRECATED)) {
+        const description = server.tools.get(name)!.description
+        expect(description, name).toMatch(/^\[DEPRECATED — v2\.0\.0 will replace this with /)
+        expect(description, name).toContain(replacement)
+        // The replacements do not exist yet — the notice must not read as an
+        // instruction to call them today, or an LLM client walks into a
+        // tool-not-found error.
+        expect(description, name).toContain("it still works today")
+      }
+    })
+
+    it("leaves the surviving knowledge tools unmarked", async () => {
+      const server = await setup()
+      for (const name of ["search_knowledge", "list_knowledge"]) {
+        expect(server.tools.get(name)!.description).not.toContain("DEPRECATED")
+      }
+    })
+  })
+
   describe("search_knowledge", () => {
     it("hits /knowledge/search — the bare /knowledge URL never existed", async () => {
       const server = await setup()

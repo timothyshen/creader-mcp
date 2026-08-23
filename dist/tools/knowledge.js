@@ -1,9 +1,21 @@
 /**
  * Knowledge base MCP tools: search, list_knowledge, CRUD for character/location/event/note
+ *
+ * ## The v1.3.0 deprecation bridge
+ *
+ * v2.0.0 collapses the 12 per-type CRUD tools below into create_entity /
+ * update_entity / delete_entity with a `type` discriminator
+ * (docs/UPGRADE_PLAN.md). v1.3.0 only warns: descriptions carry a deprecation
+ * notice, behaviour is untouched, so existing clients get one version of
+ * warning before the break. The notice is future tense on purpose — the
+ * replacement tools do not exist yet, and "use create_entity" phrasing would
+ * send an LLM client straight into a tool-not-found error today.
  */
 import { z } from "zod";
 import { getClient } from "../lib/api-client.js";
 import { toolError } from "../lib/errors.js";
+/** Uniform deprecation prefix — see the file header for why it is future tense. */
+const deprecated = (replacement, description) => `[DEPRECATED — v2.0.0 will replace this with ${replacement}; it still works today] ${description}`;
 export function registerKnowledgeTools(server) {
     server.tool("search_knowledge", "Search a book's knowledge base (characters, locations, timeline events, notes) by substring. Case-insensitive and character-agnostic, so CJK works the same as English. Queries shorter than 2 characters are rejected by the server.", {
         bookId: z.string().describe("Book ID"),
@@ -72,7 +84,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("create_character", "Create a character", {
+    server.tool("create_character", deprecated(`create_entity(type: "character")`, "Create a character"), {
         bookId: z.string().describe("Book ID"),
         name: z.string(),
         role: z.enum(["protagonist", "antagonist", "supporting", "minor"]),
@@ -91,7 +103,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("create_location", "Create a location", {
+    server.tool("create_location", deprecated(`create_entity(type: "location")`, "Create a location"), {
         bookId: z.string().describe("Book ID"),
         name: z.string(),
         type: z.string().describe("e.g. city, forest, castle"),
@@ -109,7 +121,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("create_event", "Create a timeline event", {
+    server.tool("create_event", deprecated(`create_entity(type: "event")`, "Create a timeline event"), {
         bookId: z.string().describe("Book ID"),
         title: z.string(),
         eventType: z.enum(["plot", "character", "world", "conflict", "resolution", "development"]),
@@ -129,7 +141,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("create_note", "Create a note", {
+    server.tool("create_note", deprecated(`create_entity(type: "note")`, "Create a note"), {
         bookId: z.string().describe("Book ID"),
         title: z.string(),
         content: z.string().optional(),
@@ -151,7 +163,7 @@ export function registerKnowledgeTools(server) {
         }
     });
     // ── Update tools ──────────────────────────────────────────────────
-    server.tool("update_character", "Update a character", {
+    server.tool("update_character", deprecated(`update_entity(type: "character")`, "Update a character"), {
         id: z.string().describe("Character ID"),
         name: z.string().optional(),
         description: z.string().optional(),
@@ -170,7 +182,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("update_location", "Update a location", {
+    server.tool("update_location", deprecated(`update_entity(type: "location")`, "Update a location"), {
         id: z.string().describe("Location ID"),
         name: z.string().optional(),
         description: z.string().optional(),
@@ -188,7 +200,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("update_event", "Update a timeline event", {
+    server.tool("update_event", deprecated(`update_entity(type: "event")`, "Update a timeline event"), {
         id: z.string().describe("Event ID"),
         title: z.string().optional(),
         description: z.string().optional(),
@@ -208,7 +220,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("update_note", "Update a note", {
+    server.tool("update_note", deprecated(`update_entity(type: "note")`, "Update a note"), {
         id: z.string().describe("Note ID"),
         title: z.string().optional(),
         content: z.string().optional(),
@@ -226,7 +238,7 @@ export function registerKnowledgeTools(server) {
         }
     });
     // ── Delete tools ──────────────────────────────────────────────────
-    server.tool("delete_character", "Delete a character", {
+    server.tool("delete_character", deprecated(`delete_entity(type: "character")`, "Delete a character"), {
         id: z.string().describe("Character ID"),
     }, { readOnlyHint: false, destructiveHint: true, openWorldHint: true }, async ({ id }) => {
         try {
@@ -240,7 +252,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("delete_location", "Delete a location", {
+    server.tool("delete_location", deprecated(`delete_entity(type: "location")`, "Delete a location"), {
         id: z.string().describe("Location ID"),
     }, { readOnlyHint: false, destructiveHint: true, openWorldHint: true }, async ({ id }) => {
         try {
@@ -254,7 +266,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("delete_event", "Delete a timeline event", {
+    server.tool("delete_event", deprecated(`delete_entity(type: "event")`, "Delete a timeline event"), {
         id: z.string().describe("Event ID"),
     }, { readOnlyHint: false, destructiveHint: true, openWorldHint: true }, async ({ id }) => {
         try {
@@ -268,7 +280,7 @@ export function registerKnowledgeTools(server) {
             return toolError(error);
         }
     });
-    server.tool("delete_note", "Delete a note", {
+    server.tool("delete_note", deprecated(`delete_entity(type: "note")`, "Delete a note"), {
         id: z.string().describe("Note ID"),
     }, { readOnlyHint: false, destructiveHint: true, openWorldHint: true }, async ({ id }) => {
         try {

@@ -1,5 +1,15 @@
 /**
  * Knowledge base MCP tools: search, list_knowledge, CRUD for character/location/event/note
+ *
+ * ## The v1.3.0 deprecation bridge
+ *
+ * v2.0.0 collapses the 12 per-type CRUD tools below into create_entity /
+ * update_entity / delete_entity with a `type` discriminator
+ * (docs/UPGRADE_PLAN.md). v1.3.0 only warns: descriptions carry a deprecation
+ * notice, behaviour is untouched, so existing clients get one version of
+ * warning before the break. The notice is future tense on purpose — the
+ * replacement tools do not exist yet, and "use create_entity" phrasing would
+ * send an LLM client straight into a tool-not-found error today.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
@@ -13,6 +23,10 @@ import type {
   TimelineEvent,
   Note,
 } from "../lib/types.js"
+
+/** Uniform deprecation prefix — see the file header for why it is future tense. */
+const deprecated = (replacement: string, description: string) =>
+  `[DEPRECATED — v2.0.0 will replace this with ${replacement}; it still works today] ${description}`
 
 export function registerKnowledgeTools(server: McpServer) {
   server.tool(
@@ -97,7 +111,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "create_character",
-    "Create a character",
+    deprecated(`create_entity(type: "character")`, "Create a character"),
     {
       bookId: z.string().describe("Book ID"),
       name: z.string(),
@@ -125,7 +139,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "create_location",
-    "Create a location",
+    deprecated(`create_entity(type: "location")`, "Create a location"),
     {
       bookId: z.string().describe("Book ID"),
       name: z.string(),
@@ -152,7 +166,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "create_event",
-    "Create a timeline event",
+    deprecated(`create_entity(type: "event")`, "Create a timeline event"),
     {
       bookId: z.string().describe("Book ID"),
       title: z.string(),
@@ -181,7 +195,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "create_note",
-    "Create a note",
+    deprecated(`create_entity(type: "note")`, "Create a note"),
     {
       bookId: z.string().describe("Book ID"),
       title: z.string(),
@@ -210,7 +224,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "update_character",
-    "Update a character",
+    deprecated(`update_entity(type: "character")`, "Update a character"),
     {
       id: z.string().describe("Character ID"),
       name: z.string().optional(),
@@ -235,7 +249,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "update_location",
-    "Update a location",
+    deprecated(`update_entity(type: "location")`, "Update a location"),
     {
       id: z.string().describe("Location ID"),
       name: z.string().optional(),
@@ -259,7 +273,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "update_event",
-    "Update a timeline event",
+    deprecated(`update_entity(type: "event")`, "Update a timeline event"),
     {
       id: z.string().describe("Event ID"),
       title: z.string().optional(),
@@ -285,7 +299,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "update_note",
-    "Update a note",
+    deprecated(`update_entity(type: "note")`, "Update a note"),
     {
       id: z.string().describe("Note ID"),
       title: z.string().optional(),
@@ -310,7 +324,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "delete_character",
-    "Delete a character",
+    deprecated(`delete_entity(type: "character")`, "Delete a character"),
     {
       id: z.string().describe("Character ID"),
     },
@@ -330,7 +344,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "delete_location",
-    "Delete a location",
+    deprecated(`delete_entity(type: "location")`, "Delete a location"),
     {
       id: z.string().describe("Location ID"),
     },
@@ -350,7 +364,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "delete_event",
-    "Delete a timeline event",
+    deprecated(`delete_entity(type: "event")`, "Delete a timeline event"),
     {
       id: z.string().describe("Event ID"),
     },
@@ -370,7 +384,7 @@ export function registerKnowledgeTools(server: McpServer) {
 
   server.tool(
     "delete_note",
-    "Delete a note",
+    deprecated(`delete_entity(type: "note")`, "Delete a note"),
     {
       id: z.string().describe("Note ID"),
     },
