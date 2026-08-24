@@ -1,0 +1,49 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run test
+
+      # The tag is the source of truth. If it disagrees with the five places the
+      # version is written down, stop here rather than publish a mislabelled build.
+      - name: Check the tag matches package.json
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG="$(node -p "require('./package.json').version")"
+          [ "$TAG" = "$PKG" ] || { echo "tag v$TAG != package.json $PKG"; exit 1; }
+          node scripts/check-metadata.mjs
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install mcp-publisher
+        run: curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+
+      # DNS auth, because the server is named io.creader/* rather than
+      # io.github.timothyshen/*. MCP_DNS_PRIVATE_KEY is the Ed25519 private key
+      # whose public half is the TXT record on the creader.io apex.
+      - name: Authenticate to the MCP Registry
+        run: ./mcp-publisher login dns --domain creader.io --private-key "${MCP_DNS_PRIVATE_KEY}"
+        env:
+          MCP_DNS_PRIVATE_KEY: ${{ secrets.MCP_DNS_PRIVATE_KEY }}
+
+      - name: Publish to the MCP Registry
+        run: ./mcp-publisher publish

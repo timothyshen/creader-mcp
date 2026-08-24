@@ -32,10 +32,12 @@ The result: AI-assisted writing that stays consistent across 100+ chapters and c
 ## Quick Start
 
 ```bash
-npx github:timothyshen/creader-mcp
+npx -y @creader/mcp-server
 ```
 
-Requires `CREADER_API_KEY` environment variable. Get your API key from Creader Settings > API Keys.
+Requires a `CREADER_API_KEY` environment variable. Create one at [creader.io](https://creader.io) under **Settings > API Keys** — the full tool set needs the `read`, `write` and `ai` scopes.
+
+Published on [npm](https://www.npmjs.com/package/@creader/mcp-server) and in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.creader/mcp-server`.
 
 ## Configuration
 
@@ -48,7 +50,7 @@ Add to your MCP config:
   "mcpServers": {
     "creader": {
       "command": "npx",
-      "args": ["github:timothyshen/creader-mcp"],
+      "args": ["-y", "@creader/mcp-server"],
       "env": {
         "CREADER_API_KEY": "cr_live_your_key_here"
       }
@@ -60,10 +62,8 @@ Add to your MCP config:
 ### Claude Code
 
 ```bash
-claude mcp add creader -- npx github:timothyshen/creader-mcp
+claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @creader/mcp-server
 ```
-
-Then set your API key in the environment or `.env` file.
 
 ### Environment Variables
 
