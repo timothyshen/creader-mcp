@@ -32,10 +32,12 @@ The result: AI-assisted writing that stays consistent across 100+ chapters and c
 ## Quick Start
 
 ```bash
-npx github:timothyshen/creader-mcp
+npx -y @creader/mcp-server
 ```
 
-Requires `CREADER_API_KEY` environment variable. Get your API key from Creader Settings > API Keys.
+Requires a `CREADER_API_KEY` environment variable. Create one at [creader.io](https://creader.io) under **Settings > API Keys** — the full tool set needs the `read`, `write` and `ai` scopes.
+
+Published on [npm](https://www.npmjs.com/package/@creader/mcp-server) and in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.creader/mcp-server`.
 
 ## Configuration
 
@@ -48,7 +50,7 @@ Add to your MCP config:
   "mcpServers": {
     "creader": {
       "command": "npx",
-      "args": ["github:timothyshen/creader-mcp"],
+      "args": ["-y", "@creader/mcp-server"],
       "env": {
         "CREADER_API_KEY": "cr_live_your_key_here"
       }
@@ -60,10 +62,8 @@ Add to your MCP config:
 ### Claude Code
 
 ```bash
-claude mcp add creader -- npx github:timothyshen/creader-mcp
+claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @creader/mcp-server
 ```
-
-Then set your API key in the environment or `.env` file.
 
 ### Environment Variables
 
@@ -72,7 +72,7 @@ Then set your API key in the environment or `.env` file.
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (39)
+## Tools (38)
 
 ### Books (4)
 
@@ -123,7 +123,7 @@ Structure writes stay in the editor for now.
 | `create_character` *(deprecated)* | Create a character (protagonist, antagonist, supporting, minor) |
 | `create_location` *(deprecated)* | Create a location |
 | `create_event` *(deprecated)* | Create a timeline event |
-| `create_note` *(deprecated)* | Create a note (worldbuilding, research, general) |
+| `create_note` *(deprecated)* | Create a note (worldbuilding, research, note, general) or a world constraint (`rule` / `prohibition`) — constraints are force-injected into every AI prompt for the book and capped per plan |
 | `update_character` *(deprecated)* | Update a character's fields |
 | `update_location` *(deprecated)* | Update a location's fields |
 | `update_event` *(deprecated)* | Update a timeline event's fields |
@@ -142,14 +142,13 @@ Structure writes stay in the editor for now.
 | `update_relation` | Update a relation's type, description, or strength |
 | `delete_relation` | Delete a relation |
 
-### AI (5)
+### AI (4)
 
 | Tool | Description |
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
 | `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation |
 | `vector_check` | Cross-book semantic conflict detection via embeddings. Detects duplicates, character contradictions, timeline inconsistencies, and location mismatches. Operates on already-indexed content |
-| `extract_facts` | Propose knowledge-base updates from one chapter's prose (status changes, new details, relationship changes to entities that already exist). The tool builds the entity snapshot itself; proposals come back `pending` with text evidence — apply the ones you accept with the `update_*` tools. Spends token quota; needs the `ai` scope |
 | `orchestrate` | Turn a writing intent (plus optional outline and book context) into a structured generation plan: scene breakdown, consistency constraints, style directives, word target, creative prompt. Spends token quota; needs the `ai` scope |
 
 #### Guardian layers and cost
@@ -158,6 +157,12 @@ Structure writes stay in the editor for now.
 `consistency_check`, `analyze_book` and `proofread`, whose routes were deleted
 from the product on 2026-05-01 — all three had been returning 404 to every
 caller since.
+
+`extract_facts` went the same way in v1.4.0: the product retired the whole
+fact-delta chain on 2026-08-27, so `/api/ai/extract-facts` no longer exists.
+Nothing replaces it under that name — entity discovery from prose is a
+different contract (a review queue of proposed *new* entities and field
+updates) and will arrive as its own tool.
 
 | Layer | What it checks |
 |-------|----------------|
@@ -181,7 +186,7 @@ caller since.
 
 | Tool | Description |
 |------|-------------|
-| `get_writing_stats` | Writing streak and word counts |
+| `get_writing_stats` | Writing streak, daily/weekly word progress against goals, and total writing days |
 | `get_quota` | Check remaining AI token quota |
 | `set_visibility` | Set book visibility (PRIVATE, LINK_ONLY, PUBLIC) |
 

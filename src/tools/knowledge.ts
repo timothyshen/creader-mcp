@@ -200,7 +200,12 @@ export function registerKnowledgeTools(server: McpServer) {
       bookId: z.string().describe("Book ID"),
       title: z.string(),
       content: z.string().optional(),
-      noteType: z.enum(["worldbuilding", "research", "note", "general"]).optional(),
+      noteType: z
+        .enum(["worldbuilding", "research", "note", "general", "rule", "prohibition"])
+        .optional()
+        .describe(
+          "'rule' and 'prohibition' are world constraints — force-injected into every AI prompt for this book as MUST OBEY / NEVER DO, and capped per subscription tier (a 403 CONSTRAINT_LIMIT_REACHED means the plan's limit is reached). The other four are ordinary notes."
+        ),
     },
     { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ bookId, title, content, noteType }) => {
@@ -304,7 +309,12 @@ export function registerKnowledgeTools(server: McpServer) {
       id: z.string().describe("Note ID"),
       title: z.string().optional(),
       content: z.string().optional(),
-      noteType: z.enum(["worldbuilding", "research", "note", "general"]).optional(),
+      noteType: z
+        .enum(["worldbuilding", "research", "note", "general", "rule", "prohibition"])
+        .optional()
+        .describe(
+          "'rule' and 'prohibition' are world constraints — force-injected into every AI prompt for this book as MUST OBEY / NEVER DO, and capped per subscription tier (a 403 CONSTRAINT_LIMIT_REACHED means the plan's limit is reached). The other four are ordinary notes."
+        ),
     },
     { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ id, ...fields }) => {

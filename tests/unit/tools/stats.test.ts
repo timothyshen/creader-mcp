@@ -23,16 +23,26 @@ describe("stats tools", () => {
     expect(server.names().sort()).toEqual(["get_quota", "get_writing_stats"])
   })
 
-  it("get_writing_stats formats streak and word counts", async () => {
+  it("get_writing_stats formats streak and word progress", async () => {
     const server = await setup()
     fetchMock.mockSuccess(fxStats)
     const result = asToolResult(await server.call("get_writing_stats"))
     expect(result.content[0].text).toBe(
-      "Streak: 3/10 | Today: 500 words | Total: 12345 words"
+      "Streak: 3 days (best 10, goal 7) | Today: 500/1000 words | " +
+        "Yesterday: 800 words | This week: 2400/5000 words | Days written: 42"
     )
     expect(fetchMock.lastCall()!.url).toBe(
       "https://test.creader.local/api/user/writing-stats"
     )
+  })
+
+  it("names only fields the product actually returns", async () => {
+    const server = await setup()
+    fetchMock.mockSuccess(fxStats)
+    const result = asToolResult(await server.call("get_writing_stats"))
+    // The bug this replaces was silent: the tool read fields that do not exist
+    // on the wire, so it rendered "undefined" to every caller for months.
+    expect(result.content[0].text).not.toContain("undefined")
   })
 
   it("get_quota formats remaining, used, and bonus", async () => {

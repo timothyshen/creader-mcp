@@ -1,9 +1,11 @@
 {
   "name": "@creader/mcp-server",
-  "version": "1.3.0",
+  "version": "1.4.0",
+  "mcpName": "io.creader/mcp-server",
   "description": "MCP server for Creader — access your stories, knowledge base, and AI tools from any MCP client",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@10.17.0",
   "bin": {
     "creader-mcp": "dist/index.js"
   },
@@ -13,6 +15,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "check": "node scripts/check-metadata.mjs",
     "prepare": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
@@ -41,8 +44,18 @@
     "writing",
     "ai",
     "knowledge-base",
-    "model-context-protocol"
+    "model-context-protocol",
+    "novel",
+    "fiction",
+    "worldbuilding",
+    "storytelling",
+    "continuity",
+    "author-tools"
   ],
+  "homepage": "https://creader.io",
+  "bugs": {
+    "url": "https://github.com/timothyshen/creader-mcp/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/timothyshen/creader-mcp.git"

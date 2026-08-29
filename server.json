@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.creader/mcp-server",
+  "title": "Creader",
+  "description": "Novel writing with persistent story memory: characters, locations, timeline, consistency",
+  "version": "1.4.0",
+  "websiteUrl": "https://creader.io",
+  "repository": {
+    "url": "https://github.com/timothyshen/creader-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@creader/mcp-server",
+      "version": "1.4.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "CREADER_API_KEY",
+          "description": "Creader API key. Create one at https://creader.io under Settings > API Keys. Needs the read, write and ai scopes for the full tool set.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "CREADER_API_URL",
+          "description": "Override the Creader API base URL. Only needed for self-hosted or staging instances.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://creader.io"
+        }
+      ]
+    }
+  ]
+}

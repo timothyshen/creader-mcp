@@ -1,12 +1,19 @@
 /**
- * AI MCP tools: generate_outline, guardian_check, vector_check,
- * extract_facts, orchestrate
+ * AI MCP tools: generate_outline, guardian_check, vector_check, orchestrate
  *
  * `guardian_check` replaces the three tools that fronted the pre-v0.13
  * Guardian routes (consistency_check / analyze_book / proofread). Those
  * routes were deleted from the product on 2026-05-01 and collapsed into one
  * 5-layer dispatcher, so all three had been returning 404 to every caller
  * for months. One dispatcher route, one tool.
+ *
+ * `extract_facts` is gone for the same reason, one version later: the product
+ * retired the whole fact-delta chain on 2026-08-27 (route, trigger, hook,
+ * component, store slice) as work nothing reached, so the tool's only endpoint
+ * stopped existing. Entity discovery from prose lives on as
+ * POST /api/books/:bookId/entity-candidates, which proposes *new* entities and
+ * field updates into a review queue — a different contract, not a rename, so it
+ * gets its own tool when it gets one rather than inheriting this name.
  */
 import { z } from "zod";
 import { getClient } from "../lib/api-client.js";
@@ -14,11 +21,6 @@ import { toolError } from "../lib/errors.js";
 import { stripHtmlForPositions } from "../lib/html-text.js";
 /** Server-side zod cap on both plainContent and htmlContent. */
 const MAX_CONTENT_CHARS = 200_000;
-// Server-side zod bounds on /api/ai/extract-facts.
-const EXTRACT_MIN_CHARS = 200;
-const EXTRACT_MAX_CHARS = 100_000;
-const SNAPSHOT_MAX_ENTITIES = 200;
-const SNAPSHOT_MAX_CONTENT = 500;
 export function registerAITools(server) {
     server.tool("generate_outline", "Generate a story outline based on a premise. Returns structured chapter suggestions.", {
         title: z.string().describe("Book/story title"),
@@ -132,76 +134,6 @@ export function registerAITools(server) {
             const result = await client.postRaw(`/api/books/${bookId}/guardian/vector-check`, { changedSourceId, sourceTypes });
             return {
                 content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-            };
-        }
-        catch (error) {
-            return toolError(error);
-        }
-    });
-    server.tool("extract_facts", [
-        "Extract PROPOSED knowledge-base updates from one chapter's prose: status changes,",
-        "new details, and relationship changes to entities that already exist in the book.",
-        "It does not discover new entities and does not write anything — every proposal",
-        "comes back status:'pending' with its text evidence. Apply the ones you accept via",
-        "update_character / update_location / update_event / update_note.",
-        "Spends AI token quota and needs an API key with the 'ai' scope.",
-        "The server analyses at most the first ~15,000 characters of the chapter (the",
-        "reply's `truncated` flag says when that happened) and requires at least 200.",
-    ].join(" "), {
-        bookId: z.string().describe("Book ID"),
-        chapterId: z.string().describe("Chapter whose prose to extract from"),
-    }, { readOnlyHint: true, openWorldHint: true }, async ({ bookId, chapterId }) => {
-        try {
-            const client = getClient();
-            const chapter = await client.get(`/api/chapters/${chapterId}`);
-            const plain = stripHtmlForPositions(chapter.content || "");
-            if (plain.length < EXTRACT_MIN_CHARS) {
-                return toolError(new Error(`Chapter has ${plain.length} characters of prose; extract-facts requires at least ${EXTRACT_MIN_CHARS}.`));
-            }
-            // The route detects changes to entities it is TOLD about, so the
-            // snapshot is the whole point of the call. Built here rather than
-            // asked of the caller — same batched-read approach as get_book_context.
-            const [characters, locations, events, notes] = await Promise.all([
-                client.get(`/api/books/${bookId}/characters`),
-                client.get(`/api/books/${bookId}/locations`),
-                client.get(`/api/books/${bookId}/timeline-events`),
-                client.get(`/api/books/${bookId}/notes`),
-            ]);
-            const snapshot = (id, title, type, content, metadata) => ({
-                id,
-                title,
-                type,
-                content: (content || "").slice(0, SNAPSHOT_MAX_CONTENT),
-                ...(metadata ? { metadata } : {}),
-            });
-            const entities = [
-                ...characters.map(c => snapshot(c.id, c.name, "character", c.description, c.role ? { role: c.role } : undefined)),
-                ...locations.map(l => snapshot(l.id, l.name, "location", l.description, l.type ? { locationType: l.type } : undefined)),
-                ...events.map(e => snapshot(e.id, e.title, "event", [e.description, e.consequences].filter(Boolean).join(" — "))),
-                ...notes.map(n => snapshot(n.id, n.title, "note", n.content)),
-            ];
-            if (!entities.length) {
-                return toolError(new Error("The book has no knowledge entities yet — extract_facts reports changes to entities that already exist. Create characters/locations/events/notes first."));
-            }
-            const capped = entities.slice(0, SNAPSHOT_MAX_ENTITIES);
-            const response = await client.postRaw("/api/ai/extract-facts", {
-                bookId,
-                chapterId,
-                chapterContent: plain.slice(0, EXTRACT_MAX_CHARS),
-                existingEntities: capped,
-            });
-            const caveats = [];
-            if (response.result?.truncated) {
-                caveats.push("note: the server analysed only the first ~15,000 characters of this chapter");
-            }
-            if (entities.length > capped.length) {
-                caveats.push(`note: entity snapshot capped at ${SNAPSHOT_MAX_ENTITIES} of ${entities.length} entities — proposals for the rest cannot appear`);
-            }
-            return {
-                content: [{
-                        type: "text",
-                        text: [JSON.stringify(response.result, null, 2), ...caveats].join("\n"),
-                    }],
             };
         }
         catch (error) {
