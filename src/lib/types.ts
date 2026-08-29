@@ -79,11 +79,23 @@ export interface SemanticRelation {
 }
 
 // Stats
+// Mirror of WritingStatsResponse in creader-editor's types/api/account.ts.
+// `todayWords` / `totalWords` used to be declared here and neither has ever
+// existed on the wire — the tool printed "undefined words" for both. Progress
+// counters are named *WordProgress, and the product keeps NO lifetime word
+// total, so do not reintroduce one here to fill the hole.
 export interface WritingStats {
   currentStreak: number
   longestStreak: number
-  totalWords: number
-  todayWords: number
+  lastWriteDate: string | null
+  totalWritingDays: number
+  streakGoal: number
+  dailyWordGoal: number
+  weeklyWordGoal: number
+  streakProgress: number
+  dailyWordProgress: number
+  yesterdayWordProgress: number
+  weeklyWordProgress: number
 }
 
 export interface QuotaInfo {
@@ -209,45 +221,6 @@ export interface Scene {
   mood?: string | null
   createdAt: string
   updatedAt: string
-}
-
-// ── Fact extraction (/api/ai/extract-facts) ────────────────────────
-// The route replies with bare `{ success, result }`, not the envelope.
-// FactUpdate is surfaced verbatim to the caller, so it stays loose.
-
-/** Entity snapshot sent TO the route (server caps: 200 items, 500 chars each). */
-export interface EntitySnapshot {
-  id: string
-  title: string
-  type: string
-  content: string
-  metadata?: Record<string, unknown>
-}
-
-export interface FactUpdate {
-  entityId: string
-  entityTitle?: string
-  entityType?: string
-  updateType?: string
-  fieldPath?: string
-  proposedValue?: unknown
-  confidence?: unknown
-  textEvidence?: string
-  chapterId?: string
-  status?: string
-}
-
-export interface FactExtractionResult {
-  chapterId: string
-  factUpdates: FactUpdate[]
-  /** True when the server analysed only a prefix of the chapter. */
-  truncated?: boolean
-  extractedAt?: unknown
-}
-
-export interface ExtractFactsResponse {
-  success: boolean
-  result: FactExtractionResult
 }
 
 // ── Generation planning (/api/ai/orchestrate) ──────────────────────

@@ -42,12 +42,17 @@ describe.skipIf(!token)("Creader API integration", () => {
     "returns writing stats for the authenticated user",
     async () => {
       const client = await makeClient()
-      const stats = await client.get<{ currentStreak: number; totalWords: number }>(
-        "/api/user/writing-stats"
-      )
+      const stats = await client.get<{
+        currentStreak: number
+        dailyWordProgress: number
+        totalWritingDays: number
+      }>("/api/user/writing-stats")
       expect(stats).toBeDefined()
       expect(typeof stats.currentStreak).toBe("number")
-      expect(typeof stats.totalWords).toBe("number")
+      // Named exactly as the product names them — this assertion is the only
+      // thing standing between the tool and another round of "undefined words".
+      expect(typeof stats.dailyWordProgress).toBe("number")
+      expect(typeof stats.totalWritingDays).toBe("number")
     },
     30_000
   )

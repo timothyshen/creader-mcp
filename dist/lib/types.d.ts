@@ -69,8 +69,15 @@ export interface SemanticRelation {
 export interface WritingStats {
     currentStreak: number;
     longestStreak: number;
-    totalWords: number;
-    todayWords: number;
+    lastWriteDate: string | null;
+    totalWritingDays: number;
+    streakGoal: number;
+    dailyWordGoal: number;
+    weeklyWordGoal: number;
+    streakProgress: number;
+    dailyWordProgress: number;
+    yesterdayWordProgress: number;
+    weeklyWordProgress: number;
 }
 export interface QuotaInfo {
     tokenQuota: number;
@@ -196,37 +203,6 @@ export interface Scene {
     mood?: string | null;
     createdAt: string;
     updatedAt: string;
-}
-/** Entity snapshot sent TO the route (server caps: 200 items, 500 chars each). */
-export interface EntitySnapshot {
-    id: string;
-    title: string;
-    type: string;
-    content: string;
-    metadata?: Record<string, unknown>;
-}
-export interface FactUpdate {
-    entityId: string;
-    entityTitle?: string;
-    entityType?: string;
-    updateType?: string;
-    fieldPath?: string;
-    proposedValue?: unknown;
-    confidence?: unknown;
-    textEvidence?: string;
-    chapterId?: string;
-    status?: string;
-}
-export interface FactExtractionResult {
-    chapterId: string;
-    factUpdates: FactUpdate[];
-    /** True when the server analysed only a prefix of the chapter. */
-    truncated?: boolean;
-    extractedAt?: unknown;
-}
-export interface ExtractFactsResponse {
-    success: boolean;
-    result: FactExtractionResult;
 }
 export interface GenerationScene {
     order: number;

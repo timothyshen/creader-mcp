@@ -92,6 +92,12 @@ _Read-only for this release. Write ops for volume/act/scene deferred to v2.1+ on
 | `extract_facts` | `POST /api/ai/extract-facts` |
 | `orchestrate` | `POST /api/ai/orchestrate` |
 
+> **Outcome (v1.4.0):** both shipped in v1.2.0, and `extract_facts` was then
+> removed. The product retired the whole fact-delta chain on 2026-08-27, route
+> included, so the tool had no endpoint left. `orchestrate` stands. This
+> document is the plan as written at v1.0.2 and is left as it was — the note is
+> here so nobody reads the table above as a live mapping.
+
 **Acceptance**: Claude Desktop can navigate a v1.0 story's full hierarchy (book → volume → act → scene → chapter) via read tools.
 
 ---

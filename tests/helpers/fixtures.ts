@@ -3,7 +3,6 @@ import type {
   Book,
   Chapter,
   Character,
-  FactExtractionResult,
   GenerationPlan,
   Location,
   TimelineEvent,
@@ -86,11 +85,23 @@ export const fxRelation: SemanticRelation = {
   updatedAt: "2026-01-01T00:00:00Z",
 }
 
+// Copied field-for-field from what GET /api/user/writing-stats actually
+// returns (toResponse() in the product's route). The previous version of this
+// fixture invented `totalWords` / `todayWords`, which made the unit test agree
+// with a tool that printed "undefined" against the live API — if a field here
+// is not in the product's response, the test proves nothing.
 export const fxStats: WritingStats = {
   currentStreak: 3,
   longestStreak: 10,
-  totalWords: 12345,
-  todayWords: 500,
+  lastWriteDate: "2026-01-01T00:00:00Z",
+  totalWritingDays: 42,
+  streakGoal: 7,
+  dailyWordGoal: 1000,
+  weeklyWordGoal: 5000,
+  streakProgress: 3,
+  dailyWordProgress: 500,
+  yesterdayWordProgress: 800,
+  weeklyWordProgress: 2400,
 }
 
 export const fxQuota: QuotaInfo = {
@@ -137,26 +148,6 @@ export const fxScene: Scene = {
   chapterId: "chap_1",
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
-}
-
-export const fxFactResult: FactExtractionResult = {
-  chapterId: "chap_1",
-  factUpdates: [
-    {
-      entityId: "char_1",
-      entityTitle: "Alice",
-      entityType: "character",
-      updateType: "status_change",
-      fieldPath: "description",
-      proposedValue: "Now queen of Wonderland",
-      confidence: 0.9,
-      textEvidence: "they crowned her that morning",
-      chapterId: "chap_1",
-      status: "pending",
-    },
-  ],
-  truncated: false,
-  extractedAt: "2026-08-21T00:00:00Z",
 }
 
 export const fxPlan: GenerationPlan = {

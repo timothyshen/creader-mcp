@@ -4,11 +4,8 @@ import { FakeMcpServer, asToolResult } from "../../helpers/fake-mcp-server.js"
 import {
   fxChapter,
   fxCharacter,
-  fxFactResult,
   fxGuardianRun,
   fxLocation,
-  fxNote,
-  fxEvent,
   fxPlan,
   fxVectorCheck,
 } from "../../helpers/fixtures.js"
@@ -28,10 +25,9 @@ describe("AI tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers the five live AI tools", async () => {
+  it("registers the four live AI tools", async () => {
     const server = await setup()
     expect(server.names().sort()).toEqual([
-      "extract_facts",
       "generate_outline",
       "guardian_check",
       "orchestrate",
@@ -47,6 +43,10 @@ describe("AI tools", () => {
     expect(server.has("consistency_check")).toBe(false)
     expect(server.has("analyze_book")).toBe(false)
     expect(server.has("proofread")).toBe(false)
+    // extract_facts fronted /api/ai/extract-facts, deleted 2026-08-27 with the
+    // rest of the fact-delta chain. entity-candidates is a different contract,
+    // so nothing here inherits the name.
+    expect(server.has("extract_facts")).toBe(false)
   })
 
   describe("generate_outline", () => {
@@ -191,126 +191,6 @@ describe("AI tools", () => {
       )
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toContain("down")
-    })
-  })
-
-  describe("extract_facts", () => {
-    const longChapter = {
-      ...fxChapter,
-      content: `<p>${"word ".repeat(60).trim()}</p>`, // 299 chars of prose once stripped
-    }
-
-    /** Queue the reads the tool always makes: chapter, then the 4 entity lists. */
-    function queueReads(overrides?: {
-      characters?: unknown[]
-      locations?: unknown[]
-      events?: unknown[]
-      notes?: unknown[]
-      chapter?: unknown
-    }) {
-      fetchMock
-        .mockSuccess(overrides?.chapter ?? longChapter)
-        .mockSuccess(overrides?.characters ?? [fxCharacter])
-        .mockSuccess(overrides?.locations ?? [fxLocation])
-        .mockSuccess(overrides?.events ?? [fxEvent])
-        .mockSuccess(overrides?.notes ?? [fxNote])
-    }
-
-    it("builds the entity snapshot itself and POSTs stripped prose to extract-facts", async () => {
-      const server = await setup()
-      queueReads()
-      fetchMock.mockRaw({ success: true, result: fxFactResult })
-
-      const result = asToolResult(
-        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
-      )
-
-      expect(result.isError).toBeUndefined()
-      const post = fetchMock.lastCall()!
-      expect(post.method).toBe("POST")
-      expect(post.url).toBe("https://test.creader.local/api/ai/extract-facts")
-      const body = post.body as {
-        bookId: string
-        chapterId: string
-        chapterContent: string
-        existingEntities: Array<Record<string, unknown>>
-      }
-      expect(body.bookId).toBe("book_1")
-      expect(body.chapterId).toBe("chap_1")
-      // Stripped, not the stored Tiptap HTML.
-      expect(body.chapterContent).not.toContain("<p>")
-      expect(body.chapterContent).toContain("word word")
-      // All four entity types are in the snapshot, in the server's shape.
-      expect(body.existingEntities).toContainEqual({
-        id: "char_1",
-        title: "Alice",
-        type: "character",
-        content: "A curious heroine.",
-        metadata: { role: "protagonist" },
-      })
-      expect(body.existingEntities).toContainEqual(
-        expect.objectContaining({ id: "loc_1", type: "location" })
-      )
-      expect(body.existingEntities).toContainEqual(
-        expect.objectContaining({ id: "evt_1", type: "event" })
-      )
-      expect(body.existingEntities).toContainEqual(
-        expect.objectContaining({ id: "note_1", type: "note" })
-      )
-      // Proposals are surfaced verbatim, still pending.
-      expect(result.content[0].text).toContain("Now queen of Wonderland")
-      expect(result.content[0].text).toContain("pending")
-    })
-
-    it("truncates snapshot entity content to the server's 500-char cap", async () => {
-      const server = await setup()
-      queueReads({
-        characters: [{ ...fxCharacter, description: "x".repeat(600) }],
-        locations: [],
-        events: [],
-        notes: [],
-      })
-      fetchMock.mockRaw({ success: true, result: fxFactResult })
-
-      await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
-
-      const body = fetchMock.lastCall()!.body as {
-        existingEntities: Array<{ content: string }>
-      }
-      expect(body.existingEntities[0].content).toHaveLength(500)
-    })
-
-    it("refuses a chapter below the server's 200-char minimum without spending quota", async () => {
-      const server = await setup()
-      fetchMock.mockSuccess(fxChapter) // 17 chars of prose
-      const result = asToolResult(
-        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.isError).toBe(true)
-      expect(result.content[0].text).toContain("at least 200")
-      expect(fetchMock.calls.length).toBe(1)
-    })
-
-    it("refuses when the book has no entities — there is nothing to extract against", async () => {
-      const server = await setup()
-      queueReads({ characters: [], locations: [], events: [], notes: [] })
-      const result = asToolResult(
-        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.isError).toBe(true)
-      expect(result.content[0].text).toContain("no knowledge entities")
-      // Chapter + 4 entity lists, and crucially no quota-spending POST.
-      expect(fetchMock.calls.length).toBe(5)
-    })
-
-    it("surfaces the server's truncation flag instead of implying full coverage", async () => {
-      const server = await setup()
-      queueReads()
-      fetchMock.mockRaw({ success: true, result: { ...fxFactResult, truncated: true } })
-      const result = asToolResult(
-        await server.call("extract_facts", { bookId: "book_1", chapterId: "chap_1" })
-      )
-      expect(result.content[0].text).toContain("first ~15,000 characters")
     })
   })
 

@@ -243,6 +243,19 @@ describe("knowledge tools", () => {
       )
       expect(result.content[0].text).toContain("Created note: Theme idea")
     })
+
+    it("create_note accepts the world-constraint note types", async () => {
+      const server = await setup()
+      const base = { bookId: "book_1", title: "No resurrection" }
+      // rule / prohibition are the two noteTypes Creader force-injects into
+      // every AI prompt for the book. The enum here omitted them, so an MCP
+      // client could write prose but not the laws the prose has to obey.
+      expect(server.validate("create_note", { ...base, noteType: "rule" }).success).toBe(true)
+      expect(server.validate("create_note", { ...base, noteType: "prohibition" }).success).toBe(true)
+      expect(server.validate("create_note", { ...base, noteType: "general" }).success).toBe(true)
+      // Still a closed set — the route's zod enum rejects anything else with a 400.
+      expect(server.validate("create_note", { ...base, noteType: "law" }).success).toBe(false)
+    })
   })
 
   describe("update operations", () => {
@@ -275,6 +288,17 @@ describe("knowledge tools", () => {
       fetchMock.mockSuccess(fxNote)
       await server.call("update_note", { id: "note_1", title: "X" })
       expect(fetchMock.lastCall()!.url).toBe("https://test.creader.local/api/notes/note_1")
+    })
+
+    it("update_note can promote a plain note to a world constraint", async () => {
+      const server = await setup()
+      // The product's PATCH route takes the same 6-value enum as POST; create
+      // and update must not drift apart on this list.
+      expect(server.validate("update_note", { id: "note_1", noteType: "rule" }).success).toBe(true)
+      expect(
+        server.validate("update_note", { id: "note_1", noteType: "prohibition" }).success
+      ).toBe(true)
+      expect(server.validate("update_note", { id: "note_1", noteType: "law" }).success).toBe(false)
     })
   })
 
