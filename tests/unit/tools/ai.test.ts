@@ -5,6 +5,8 @@ import {
   fxChapter,
   fxCharacter,
   fxGuardianRun,
+  fxPersist,
+  fxPersistedIssue,
   fxLocation,
   fxPlan,
   fxVectorCheck,
@@ -25,12 +27,14 @@ describe("AI tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers the four live AI tools", async () => {
+  it("registers the six live AI tools", async () => {
     const server = await setup()
     expect(server.names().sort()).toEqual([
       "generate_outline",
       "guardian_check",
+      "list_guardian_issues",
       "orchestrate",
+      "resolve_guardian_issue",
       "vector_check",
     ])
   })
@@ -83,6 +87,7 @@ describe("AI tools", () => {
       fetchMock
         .mockSuccess({ ...fxChapter, content: "<p>He had a <em>heart of gold</em>.</p>" })
         .mockRaw(fxGuardianRun)
+        .mockSuccess(fxPersist)
 
       await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
 
@@ -103,14 +108,14 @@ describe("AI tools", () => {
 
     it("defaults to the local budget so a plain check spends no token quota", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
       await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       expect(fetchMock.calls[1].body).toMatchObject({ costBudget: "local" })
     })
 
     it("passes through an explicit layer selection and budget", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
       await server.call("guardian_check", {
         bookId: "book_1",
         chapterId: "chap_1",
@@ -127,14 +132,14 @@ describe("AI tools", () => {
 
     it("omits layers entirely when none are given, so the server runs all five", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
       await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       expect(fetchMock.calls[1].body).not.toHaveProperty("layers")
     })
 
     it("surfaces detector errors and truncation, not just the issue list", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
       const result = asToolResult(
         await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       )
@@ -157,6 +162,68 @@ describe("AI tools", () => {
       )
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toContain("no content")
+    })
+
+    it("saves the findings so the author's Guardian panel sees them", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
+
+      const result = asToolResult(
+        await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
+      )
+
+      // Third call, after the chapter read and the run itself.
+      const save = fetchMock.calls[2]
+      expect(save.method).toBe("POST")
+      expect(save.url).toBe("https://test.creader.local/api/books/book_1/guardian/issues")
+      const body = save.body as { chapterId: string; issues: Array<Record<string, unknown>> }
+      expect(body.chapterId).toBe("chap_1")
+      // Only the subset the persist route's schema accepts, and the fingerprint
+      // above all — it is the key a re-run upserts on.
+      expect(body.issues[0]).toMatchObject({
+        fingerprint: fxGuardianRun.issues[0].fingerprint,
+        title: fxGuardianRun.issues[0].title,
+        severity: fxGuardianRun.issues[0].severity,
+      })
+      expect(JSON.parse(result.content[0].text).saved).toMatchObject({
+        persisted: true,
+        count: 1,
+      })
+    })
+
+    it("leaves no trace when persist:false", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
+      const result = asToolResult(
+        await server.call("guardian_check", {
+          bookId: "book_1",
+          chapterId: "chap_1",
+          persist: false,
+        })
+      )
+      expect(fetchMock.calls).toHaveLength(2)
+      expect(JSON.parse(result.content[0].text).saved.persisted).toBe(false)
+    })
+
+    it("keeps the findings when the save is refused", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess(fxChapter)
+        .mockRaw(fxGuardianRun)
+        .mockHttpError(403, { error: "This API key lacks the 'write' scope." })
+
+      const result = asToolResult(
+        await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
+      )
+
+      // The expensive half already happened and, on api-heavy, was already
+      // billed. Throwing it away because the save failed is the worst trade
+      // available, so the run is returned with the failure attached.
+      expect(result.isError).toBeUndefined()
+      const parsed = JSON.parse(result.content[0].text)
+      expect(parsed.issues).toHaveLength(1)
+      expect(parsed.saved.persisted).toBe(false)
+      expect(parsed.saved.reason).toContain("'write' scope")
     })
 
     it("propagates dispatcher HTTP errors (e.g. a key without the ai scope)", async () => {
@@ -191,6 +258,67 @@ describe("AI tools", () => {
       )
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toContain("down")
+    })
+  })
+
+  describe("list_guardian_issues", () => {
+    it("GETs the open issues and narrows by chapter", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ issues: [fxPersistedIssue] })
+      const result = asToolResult(
+        await server.call("list_guardian_issues", { bookId: "book_1", chapterId: "chap_1" })
+      )
+      expect(fetchMock.lastCall()!.url).toBe(
+        "https://test.creader.local/api/books/book_1/guardian/issues?chapterId=chap_1"
+      )
+      expect(result.content[0].text).toContain("l2.cliche:heart-of-gold")
+    })
+
+    it("omits the query entirely when no chapter is given", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ issues: [] })
+      const result = asToolResult(await server.call("list_guardian_issues", { bookId: "book_1" }))
+      expect(fetchMock.lastCall()!.url).toBe(
+        "https://test.creader.local/api/books/book_1/guardian/issues"
+      )
+      expect(result.content[0].text).toBe("No open Guardian issues.")
+    })
+  })
+
+  describe("resolve_guardian_issue", () => {
+    it("PATCHes the collection by fingerprint, not by row id", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({
+        issue: { id: "gi_1", fingerprint: "l2.cliche:heart-of-gold", status: "DISMISSED" },
+      })
+      const result = asToolResult(
+        await server.call("resolve_guardian_issue", {
+          bookId: "book_1",
+          fingerprint: "l2.cliche:heart-of-gold",
+          status: "DISMISSED",
+        })
+      )
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("PATCH")
+      // Fingerprint-addressed on purpose: a run returns fingerprints, never the
+      // persisted row ids, so the id-addressed route cannot close what it found.
+      expect(call.url).toBe("https://test.creader.local/api/books/book_1/guardian/issues")
+      expect(call.body).toEqual({
+        fingerprint: "l2.cliche:heart-of-gold",
+        status: "DISMISSED",
+      })
+      expect(result.content[0].text).toContain("DISMISSED")
+    })
+
+    it("rejects a status the route does not accept", async () => {
+      const server = await setup()
+      expect(
+        server.validate("resolve_guardian_issue", {
+          bookId: "book_1",
+          fingerprint: "f",
+          status: "IGNORED",
+        }).success
+      ).toBe(false)
     })
   })
 

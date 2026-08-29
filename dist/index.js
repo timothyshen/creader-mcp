@@ -18,7 +18,7 @@ import { registerStatsTools } from "./tools/stats.js";
 import { registerPublishingTools } from "./tools/publishing.js";
 import { registerRelationTools } from "./tools/relations.js";
 import { registerAITools } from "./tools/ai.js";
-const server = new McpServer({ name: "creader", version: "1.4.0" }, {
+const server = new McpServer({ name: "creader", version: "1.5.0" }, {
     instructions: [
         "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
         "Books must exist before creating chapters or knowledge entries.",
@@ -30,10 +30,11 @@ const server = new McpServer({ name: "creader", version: "1.4.0" }, {
         "Deprecation notice: the 12 per-type knowledge CRUD tools (create/update/delete_ × character/location/event/note) will be consolidated into create_entity/update_entity/delete_entity with a type discriminator in v2.0.0. They remain fully functional throughout 1.x — keep using them for now.",
         "Use list_relations to see entity-to-entity relationships (e.g. character allies, location containment).",
         "AI checks: guardian_check runs the 5-layer narrative Guardian on one chapter — pick layers (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure) and a costBudget; the default 'local' budget is free and makes no model calls, 'api-heavy' spends token quota. vector_check finds cross-book semantic conflicts in already-indexed content.",
+        "Guardian findings persist: guardian_check saves what it finds to the book by default, so the author sees it in their Guardian panel and Story Health counts it. Call list_guardian_issues before re-running to see what is already open — including what the author flagged in the editor — and resolve_guardian_issue (addressed by fingerprint) to close one as RESOLVED once the prose is fixed, or DISMISSED if the note was wrong. Dismissal feeds detector confidence, so dismiss deliberately.",
         "AI writing aid (spends token quota, needs the 'ai' scope): orchestrate turns an intent into a structured generation plan to guide drafting.",
     ].join(" "),
 });
-// Register all 38 tools
+// Register all 40 tools
 registerBookTools(server);
 registerChapterTools(server);
 registerStructureTools(server);

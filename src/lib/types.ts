@@ -163,6 +163,41 @@ export interface GuardianLayerReport {
   truncation?: { analyzedChars: number; totalChars: number }
 }
 
+// ── Persisted Guardian issues (/books/:id/guardian/issues) ─────────
+// The durable record behind the author's Guardian panel and Story Health.
+// A run's findings are transient until they are POSTed here. Both routes
+// answered session cookies only until 2026-08-29 — see the tool comments in
+// tools/ai.ts for what that cost.
+
+export interface PersistedGuardianIssue {
+  id: string
+  bookId: string
+  chapterId: string | null
+  fingerprint: string
+  title: string
+  severity: string
+  category?: string | null
+  confidence?: unknown
+  description?: string | null
+  detector?: string | null
+  lane?: string | null
+  evidence?: unknown
+  metrics?: unknown
+  suggestedFix?: string | null
+  textPosition?: { start: number; end: number } | null
+  status: "OPEN" | "RESOLVED" | "DISMISSED"
+  resolvedAt: string | null
+  resolvedBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PersistResult {
+  upsertedCount: number
+  autoResolvedCount: number
+  persistedIds: string[]
+}
+
 export interface GuardianRunResponse {
   reports: GuardianLayerReport[]
   /** Flattened, deduplicated issues across every layer that ran. */
