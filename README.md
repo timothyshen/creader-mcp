@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (40)
+## Tools (41)
 
 ### Books (4)
 
@@ -83,7 +83,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `create_book` | Create a new book (novel, autobiography, worldbook, encyclopedia) |
 | `get_book_context` | Get full book context in one call — metadata, chapters, characters, locations, events |
 
-### Chapters (6)
+### Chapters (7)
 
 | Tool | Description |
 |------|-------------|
@@ -92,6 +92,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `create_chapter` | Create a new chapter |
 | `update_chapter` | Write or update a chapter. Prose writes carry a `baseContentHash` and are rejected as a conflict — never silently overwritten — if the editor changed the chapter meanwhile |
 | `delete_chapter` | Permanently delete a chapter (hard delete; its scenes go with it, later chapters are renumbered). Needs the `delete` API-key scope; book owner only |
+| `search_book` | Search the book's **prose** and get back matching chapters with snippets, character offsets and chapter ids. `text` (exact substring, CJK-safe, exhaustive) or `semantic` (meaning-based, indexed chapters only). Not the same as `search_knowledge`, which searches entity records |
 | `reorder_chapters` | Reorder a book's chapters. Takes the complete chapter-ID list in the new order; writes only the positions that changed. The server has no atomic reorder, so an interrupted run reports exactly which chapters moved and is safe to re-run |
 
 ### Structure (3)
@@ -118,7 +119,7 @@ Structure writes stay in the editor for now.
 
 | Tool | Description |
 |------|-------------|
-| `search_knowledge` | Substring search across characters, locations, events, and notes (case-insensitive, CJK-safe; queries must be 2+ characters) |
+| `search_knowledge` | Substring search across characters, locations, events, and notes (case-insensitive, CJK-safe; queries must be 2+ characters). For the prose itself, use `search_book` |
 | `list_knowledge` | List characters, locations, or events in a book |
 | `create_character` *(deprecated)* | Create a character (protagonist, antagonist, supporting, minor) |
 | `create_location` *(deprecated)* | Create a location |

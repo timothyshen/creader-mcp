@@ -208,6 +208,30 @@ export interface GuardianRunResponse {
   usage: { totalTokens: number }
 }
 
+// ── Book search (/books/:id/search) ────────────────────────────────
+// Searches the PROSE, unlike /knowledge/search which searches entity records.
+// Replies with bare JSON, not the envelope — getRaw, or it fails with the
+// nonsensical "API error: 200".
+
+export interface BookSearchResult {
+  chapterId: string
+  chapterTitle: string
+  chapterOrder: number
+  /** ~120 chars of context around the match, ellipsed at both ends. */
+  snippet: string
+  /** Character offset of the match in the chapter's plain text. */
+  position: number
+  /** Title-hit vs body-hit for text search; cosine similarity for semantic. */
+  score: number
+}
+
+export interface BookSearchResponse {
+  results: BookSearchResult[]
+  query: string
+  type: "text" | "semantic"
+  total: number
+}
+
 // ── Structure (volumes / acts / scenes) ────────────────────────────
 // The v1.0 hierarchy is volume → act → chapter → scene. Chapters carry
 // volumeId/actId; acts carry volumeId; scenes carry actId/chapterId. Kept

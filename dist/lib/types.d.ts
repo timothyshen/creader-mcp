@@ -190,6 +190,23 @@ export interface GuardianRunResponse {
         totalTokens: number;
     };
 }
+export interface BookSearchResult {
+    chapterId: string;
+    chapterTitle: string;
+    chapterOrder: number;
+    /** ~120 chars of context around the match, ellipsed at both ends. */
+    snippet: string;
+    /** Character offset of the match in the chapter's plain text. */
+    position: number;
+    /** Title-hit vs body-hit for text search; cosine similarity for semantic. */
+    score: number;
+}
+export interface BookSearchResponse {
+    results: BookSearchResult[];
+    query: string;
+    type: "text" | "semantic";
+    total: number;
+}
 export interface Volume {
     id: string;
     bookId: string;

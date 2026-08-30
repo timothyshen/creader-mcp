@@ -1,6 +1,9 @@
 /**
  * Chapter management MCP tools: list_chapters, get_chapter, create_chapter,
- * update_chapter, delete_chapter, reorder_chapters
+ * update_chapter, delete_chapter, reorder_chapters, search_book
+ *
+ * `search_book` lives here rather than with the book tools because what it
+ * returns is chapters, and what the caller does next is get_chapter.
  *
  * ## Why update_chapter tracks a content baseline
  *

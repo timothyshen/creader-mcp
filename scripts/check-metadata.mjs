@@ -6,7 +6,7 @@
  * Neither failure is visible until someone tries to install the thing, so the
  * duplication gets its own gate rather than a comment asking people to be careful.
  */
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
@@ -34,9 +34,14 @@ if (!declared) errors.push("src/index.ts: could not find the McpServer version l
 else eq("src/index.ts McpServer version", declared[1], pkg.version)
 
 // Tool count, as claimed by the README heading, the index.ts comment, and reality.
-const actual = (read("src/tools/ai.ts") + read("src/tools/books.ts") + read("src/tools/chapters.ts") +
-  read("src/tools/knowledge.ts") + read("src/tools/publishing.ts") + read("src/tools/relations.ts") +
-  read("src/tools/stats.ts") + read("src/tools/structure.ts")).match(/server\.tool\(/g)?.length ?? 0
+// Read the directory rather than a hand-kept list of eight filenames: a tools
+// file added tomorrow would otherwise not be counted, and the gate would go red
+// blaming the README instead of naming the file it never opened.
+const toolSources = readdirSync(join(root, "src/tools"))
+  .filter((f) => f.endsWith(".ts"))
+  .map((f) => read(`src/tools/${f}`))
+  .join("\n")
+const actual = toolSources.match(/server\.tool\(/g)?.length ?? 0
 const claimedReadme = Number(readme.match(/^## Tools \((\d+)\)/m)?.[1])
 const claimedIndex = Number(index.match(/Register all (\d+) tools/)?.[1])
 eq("README '## Tools (n)' vs server.tool() count", claimedReadme, actual)
