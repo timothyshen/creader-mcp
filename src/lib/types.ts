@@ -163,6 +163,41 @@ export interface GuardianLayerReport {
   truncation?: { analyzedChars: number; totalChars: number }
 }
 
+// ── Persisted Guardian issues (/books/:id/guardian/issues) ─────────
+// The durable record behind the author's Guardian panel and Story Health.
+// A run's findings are transient until they are POSTed here. Both routes
+// answered session cookies only until 2026-08-29 — see the tool comments in
+// tools/ai.ts for what that cost.
+
+export interface PersistedGuardianIssue {
+  id: string
+  bookId: string
+  chapterId: string | null
+  fingerprint: string
+  title: string
+  severity: string
+  category?: string | null
+  confidence?: unknown
+  description?: string | null
+  detector?: string | null
+  lane?: string | null
+  evidence?: unknown
+  metrics?: unknown
+  suggestedFix?: string | null
+  textPosition?: { start: number; end: number } | null
+  status: "OPEN" | "RESOLVED" | "DISMISSED"
+  resolvedAt: string | null
+  resolvedBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PersistResult {
+  upsertedCount: number
+  autoResolvedCount: number
+  persistedIds: string[]
+}
+
 export interface GuardianRunResponse {
   reports: GuardianLayerReport[]
   /** Flattened, deduplicated issues across every layer that ran. */
@@ -171,6 +206,30 @@ export interface GuardianRunResponse {
   durationMs: number
   traceId: string
   usage: { totalTokens: number }
+}
+
+// ── Book search (/books/:id/search) ────────────────────────────────
+// Searches the PROSE, unlike /knowledge/search which searches entity records.
+// Replies with bare JSON, not the envelope — getRaw, or it fails with the
+// nonsensical "API error: 200".
+
+export interface BookSearchResult {
+  chapterId: string
+  chapterTitle: string
+  chapterOrder: number
+  /** ~120 chars of context around the match, ellipsed at both ends. */
+  snippet: string
+  /** Character offset of the match in the chapter's plain text. */
+  position: number
+  /** Title-hit vs body-hit for text search; cosine similarity for semantic. */
+  score: number
+}
+
+export interface BookSearchResponse {
+  results: BookSearchResult[]
+  query: string
+  type: "text" | "semantic"
+  total: number
 }
 
 // ── Structure (volumes / acts / scenes) ────────────────────────────

@@ -21,6 +21,8 @@ import { toolError } from "../lib/errors.js";
 import { stripHtmlForPositions } from "../lib/html-text.js";
 /** Server-side zod cap on both plainContent and htmlContent. */
 const MAX_CONTENT_CHARS = 200_000;
+/** Server-side zod cap on one POST to /guardian/issues. */
+const MAX_PERSISTED_ISSUES = 200;
 export function registerAITools(server) {
     server.tool("generate_outline", "Generate a story outline based on a premise. Returns structured chapter suggestions.", {
         title: z.string().describe("Book/story title"),
@@ -64,6 +66,10 @@ export function registerAITools(server) {
         "Use 'api-heavy' for a full pass: it spends the owner's token quota and needs an",
         "API key with the 'ai' scope. Findings carry char-offset textPosition into the",
         "chapter's plain text; layer-2 proofreading findings also carry suggestedFix.",
+        "By default the findings are also SAVED to the book, which is what makes them",
+        "appear in the author's Guardian panel and count toward Story Health; pass",
+        "persist:false for a look that leaves no trace. Saving needs the 'write' scope,",
+        "and a run is never discarded because the save failed.",
     ].join(" "), {
         bookId: z.string().describe("Book ID"),
         chapterId: z.string().describe("Chapter ID to check"),
@@ -79,7 +85,15 @@ export function registerAITools(server) {
             .enum(["en", "en-GB", "zh"])
             .optional()
             .describe("Language of the prose. Defaults to the account locale."),
-    }, { readOnlyHint: true, openWorldHint: true }, async ({ bookId, chapterId, layers, costBudget, locale }) => {
+        persist: z
+            .boolean()
+            .optional()
+            .describe("Save the findings to the book so the author sees them in the Guardian panel. Default true."),
+    }, 
+    // Not read-only: the default path writes GuardianIssue rows. That default is
+    // deliberate — a check whose findings evaporate is the exact failure this
+    // tool shipped with for months, back when the persist route refused API keys.
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async ({ bookId, chapterId, layers, costBudget, locale, persist }) => {
         try {
             const client = getClient();
             // The dispatcher scores offsets into plain text, so it wants the prose
@@ -107,9 +121,15 @@ export function registerAITools(server) {
                 // "manual" is what lifts the automatic-trigger detector filter.
                 trigger: "manual",
             });
+            const saved = persist === false
+                ? { persisted: false, reason: "persist:false was requested" }
+                : await persistIssues(client, bookId, chapterId, result.issues ?? []);
             return {
                 content: [
-                    { type: "text", text: JSON.stringify(summarize(result), null, 2) },
+                    {
+                        type: "text",
+                        text: JSON.stringify({ ...summarize(result), saved }, null, 2),
+                    },
                 ],
             };
         }
@@ -134,6 +154,66 @@ export function registerAITools(server) {
             const result = await client.postRaw(`/api/books/${bookId}/guardian/vector-check`, { changedSourceId, sourceTypes });
             return {
                 content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            };
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
+    server.tool("list_guardian_issues", [
+        "List the Guardian issues currently OPEN on a book — the same notes the author",
+        "sees in the Guardian panel. These persist across runs and across clients, so",
+        "this is how you find out what a previous check (yours or the author's own)",
+        "already flagged before spending quota on another pass.",
+        "Each issue carries a `fingerprint`; pass that to resolve_guardian_issue.",
+    ].join(" "), {
+        bookId: z.string().describe("Book ID"),
+        chapterId: z.string().optional().describe("Narrow to one chapter"),
+    }, { readOnlyHint: true, openWorldHint: true }, async ({ bookId, chapterId }) => {
+        try {
+            const client = getClient();
+            // Both branches spell the path out in full rather than concatenating a
+            // suffix onto a shared base. creader_editor's satellite-drift checker
+            // reads route literals straight out of this file, and an interpolation
+            // glued to the end of a path reaches it as a phantom extra segment —
+            // reported as a dead route that was never dead. (It reads comments too,
+            // which is why this one names no path.)
+            const path = chapterId
+                ? `/api/books/${bookId}/guardian/issues?chapterId=${encodeURIComponent(chapterId)}`
+                : `/api/books/${bookId}/guardian/issues`;
+            const { issues } = await client.get(path);
+            if (!issues.length) {
+                return {
+                    content: [{ type: "text", text: "No open Guardian issues." }],
+                };
+            }
+            return {
+                content: [{ type: "text", text: JSON.stringify(issues, null, 2) }],
+            };
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
+    server.tool("resolve_guardian_issue", [
+        "Close a Guardian issue, or reopen one. RESOLVED means the prose was fixed;",
+        "DISMISSED means the note was wrong, and also feeds detector confidence so the",
+        "same false positive is less likely next time — so dismiss deliberately, not to",
+        "tidy up. Addressed by `fingerprint` (from list_guardian_issues or a",
+        "guardian_check run), because that is the key that survives a re-run.",
+        "Only the issue's own author may transition it.",
+    ].join(" "), {
+        bookId: z.string().describe("Book ID"),
+        fingerprint: z.string().describe("Issue fingerprint"),
+        status: z.enum(["OPEN", "RESOLVED", "DISMISSED"]),
+    }, { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async ({ bookId, fingerprint, status }) => {
+        try {
+            const client = getClient();
+            const { issue } = await client.patch(`/api/books/${bookId}/guardian/issues`, { fingerprint, status });
+            return {
+                content: [
+                    { type: "text", text: `Issue ${issue.fingerprint} → ${issue.status}` },
+                ],
             };
         }
         catch (error) {
@@ -201,6 +281,47 @@ export function registerAITools(server) {
  * reporting "no issues" while hiding that would be a lie. Everything dropped
  * (per-detector wall-clock timings) is product-UI telemetry.
  */
+/**
+ * Save a run's findings so they reach the author's Guardian panel.
+ *
+ * Never throws. The run has already happened and, on an api-heavy budget, has
+ * already been billed — losing all of it because the key lacks `write`, or
+ * because the caller is an org contributor who may read but not write the book,
+ * would be the worst possible trade. The failure is reported alongside the
+ * findings instead, which the caller still has in full.
+ */
+async function persistIssues(client, bookId, chapterId, issues) {
+    if (!issues.length)
+        return { persisted: true, count: 0 };
+    const batch = issues.slice(0, MAX_PERSISTED_ISSUES);
+    try {
+        const result = await client.post(`/api/books/${bookId}/guardian/issues`, {
+            chapterId,
+            issues: batch.map((i) => ({
+                id: i.id,
+                fingerprint: i.fingerprint,
+                title: i.title,
+                severity: i.severity,
+                ...(i.category ? { category: i.category } : {}),
+                ...(i.confidence ? { confidence: i.confidence } : {}),
+                ...(i.chapterId ? { chapterId: i.chapterId } : {}),
+                ...(i.suggestedFix ? { suggestedFix: i.suggestedFix } : {}),
+                ...(i.textPosition ? { textPosition: i.textPosition } : {}),
+            })),
+        });
+        return {
+            persisted: true,
+            count: result.upsertedCount,
+            ...(issues.length > batch.length ? { capped: issues.length - batch.length } : {}),
+        };
+    }
+    catch (error) {
+        return {
+            persisted: false,
+            reason: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
 function summarize(result) {
     return {
         issues: result.issues ?? [],

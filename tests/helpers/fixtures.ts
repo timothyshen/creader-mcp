@@ -3,7 +3,10 @@ import type {
   Book,
   Chapter,
   Character,
+  BookSearchResponse,
   GenerationPlan,
+  PersistResult,
+  PersistedGuardianIssue,
   Location,
   TimelineEvent,
   Note,
@@ -148,6 +151,51 @@ export const fxScene: Scene = {
   chapterId: "chap_1",
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
+}
+
+export const fxBookSearch: BookSearchResponse = {
+  query: "harbour",
+  type: "text",
+  total: 2,
+  results: [
+    {
+      chapterId: "chap_4",
+      chapterTitle: "The Long Way Down",
+      chapterOrder: 3,
+      snippet: "...the harbour lights had gone out one by one...",
+      position: 1820,
+      score: 2,
+    },
+    {
+      chapterId: "chap_9",
+      chapterTitle: "Salt",
+      chapterOrder: 8,
+      snippet: "...she walked to the harbour and waited...",
+      position: 412,
+      score: 1,
+    },
+  ],
+}
+
+export const fxPersist: PersistResult = {
+  upsertedCount: 1,
+  autoResolvedCount: 0,
+  persistedIds: ["gi_1"],
+}
+
+export const fxPersistedIssue: PersistedGuardianIssue = {
+  id: "gi_1",
+  bookId: "book_1",
+  chapterId: "chap_1",
+  fingerprint: "l2.cliche:heart-of-gold",
+  title: "Cliche: heart of gold",
+  severity: "warning",
+  category: "style",
+  status: "OPEN",
+  resolvedAt: null,
+  resolvedBy: null,
+  createdAt: "2026-08-29T00:00:00Z",
+  updatedAt: "2026-08-29T00:00:00Z",
 }
 
 export const fxPlan: GenerationPlan = {

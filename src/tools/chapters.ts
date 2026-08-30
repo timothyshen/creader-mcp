@@ -1,6 +1,9 @@
 /**
  * Chapter management MCP tools: list_chapters, get_chapter, create_chapter,
- * update_chapter, delete_chapter, reorder_chapters
+ * update_chapter, delete_chapter, reorder_chapters, search_book
+ *
+ * `search_book` lives here rather than with the book tools because what it
+ * returns is chapters, and what the caller does next is get_chapter.
  *
  * ## Why update_chapter tracks a content baseline
  *
@@ -25,7 +28,7 @@ import { z } from "zod"
 import { getClient } from "../lib/api-client.js"
 import { contentHash } from "../lib/content-hash.js"
 import { ApiRequestError, toolError } from "../lib/errors.js"
-import type { Chapter } from "../lib/types.js"
+import type { BookSearchResponse, Chapter } from "../lib/types.js"
 
 /** Server's code for "your edit diverged from prose that has since changed". */
 const CHAPTER_CONTENT_CONFLICT = "CHAPTER_CONTENT_CONFLICT"
@@ -194,6 +197,85 @@ export function registerChapterTools(server: McpServer) {
           content: [{
             type: "text" as const,
             text: `Deleted chapter ${chapterId} (its scenes went with it). Later chapters were renumbered to close the gap — re-run list_chapters before anything order-sensitive.`,
+          }],
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    }
+  )
+
+  server.tool(
+    "search_book",
+    [
+      "Search the PROSE of a book and get back the chapters that match, each with a",
+      "snippet and the character offset of the hit. This is the only way to look inside",
+      "the manuscript — search_knowledge searches entity RECORDS (names, descriptions),",
+      "so it cannot answer 'where did I first describe the harbour?'.",
+      "Two modes. 'text' is exact substring, case-insensitive, and works the same for",
+      "CJK as for English — use it to find a word, name or phrase you know is there.",
+      "'semantic' finds passages that mean something similar without sharing wording,",
+      "and only sees chapters whose embeddings exist.",
+      "Follow a hit with get_chapter to read the full passage.",
+    ].join(" "),
+    {
+      bookId: z.string().describe("Book ID"),
+      query: z.string().min(1).max(500).describe("What to search for"),
+      type: z
+        .enum(["text", "semantic"])
+        .optional()
+        .describe("'text' (default) is exact substring; 'semantic' is meaning-based."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(50)
+        .optional()
+        .describe("Maximum chapters to return. Server default 20, hard cap 50."),
+    },
+    { readOnlyHint: true, openWorldHint: true },
+    async ({ bookId, query, type, limit }) => {
+      try {
+        const client = getClient()
+        const params = new URLSearchParams({ q: query })
+        if (type) params.set("type", type)
+        if (limit !== undefined) params.set("limit", String(limit))
+        // Bare JSON, no { success, data } envelope — see the type's comment.
+        const result = await client.getRaw<BookSearchResponse>(
+          `/api/books/${bookId}/search?${params.toString()}`
+        )
+
+        const mode = result.type ?? type ?? "text"
+        if (!result.results?.length) {
+          // The two empties do not mean the same thing and must not read the
+          // same. Text search is exhaustive, so nothing found IS a fact about
+          // the book. Semantic search silently returns [] when a chapter has no
+          // embeddings or the server has no embedding key — reporting that as
+          // "not in the book" would be a fabrication.
+          const text =
+            mode === "semantic"
+              ? `No semantic matches for "${query}". Semantic search only sees chapters that have been indexed, and returns nothing — rather than an error — when they have not been. Re-run with type:"text" before concluding the book does not contain this.`
+              : `No matches for "${query}" in this book's prose.`
+          return { content: [{ type: "text" as const, text }] }
+        }
+
+        const lines = result.results.map((r, i) => {
+          const score = mode === "semantic" ? r.score.toFixed(3) : String(r.score)
+          return [
+            `${i + 1}. Ch ${r.chapterOrder + 1} — ${r.chapterTitle}  (score ${score})`,
+            `   ${r.snippet.replace(/\s+/g, " ").trim()}`,
+            `   chapterId:${r.chapterId} @ char ${r.position}`,
+          ].join("\n")
+        })
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: [
+              `${result.total} match${result.total === 1 ? "" : "es"} for "${query}" (${mode} search)`,
+              "",
+              ...lines,
+            ].join("\n"),
           }],
         }
       } catch (error) {

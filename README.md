@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (38)
+## Tools (41)
 
 ### Books (4)
 
@@ -83,7 +83,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `create_book` | Create a new book (novel, autobiography, worldbook, encyclopedia) |
 | `get_book_context` | Get full book context in one call — metadata, chapters, characters, locations, events |
 
-### Chapters (6)
+### Chapters (7)
 
 | Tool | Description |
 |------|-------------|
@@ -92,6 +92,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `create_chapter` | Create a new chapter |
 | `update_chapter` | Write or update a chapter. Prose writes carry a `baseContentHash` and are rejected as a conflict — never silently overwritten — if the editor changed the chapter meanwhile |
 | `delete_chapter` | Permanently delete a chapter (hard delete; its scenes go with it, later chapters are renumbered). Needs the `delete` API-key scope; book owner only |
+| `search_book` | Search the book's **prose** and get back matching chapters with snippets, character offsets and chapter ids. `text` (exact substring, CJK-safe, exhaustive) or `semantic` (meaning-based, indexed chapters only). Not the same as `search_knowledge`, which searches entity records |
 | `reorder_chapters` | Reorder a book's chapters. Takes the complete chapter-ID list in the new order; writes only the positions that changed. The server has no atomic reorder, so an interrupted run reports exactly which chapters moved and is safe to re-run |
 
 ### Structure (3)
@@ -118,7 +119,7 @@ Structure writes stay in the editor for now.
 
 | Tool | Description |
 |------|-------------|
-| `search_knowledge` | Substring search across characters, locations, events, and notes (case-insensitive, CJK-safe; queries must be 2+ characters) |
+| `search_knowledge` | Substring search across characters, locations, events, and notes (case-insensitive, CJK-safe; queries must be 2+ characters). For the prose itself, use `search_book` |
 | `list_knowledge` | List characters, locations, or events in a book |
 | `create_character` *(deprecated)* | Create a character (protagonist, antagonist, supporting, minor) |
 | `create_location` *(deprecated)* | Create a location |
@@ -142,13 +143,15 @@ Structure writes stay in the editor for now.
 | `update_relation` | Update a relation's type, description, or strength |
 | `delete_relation` | Delete a relation |
 
-### AI (4)
+### AI (6)
 
 | Tool | Description |
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
-| `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation |
+| `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation. **Saves its findings to the book by default** — pass `persist: false` for a look that leaves no trace |
 | `vector_check` | Cross-book semantic conflict detection via embeddings. Detects duplicates, character contradictions, timeline inconsistencies, and location mismatches. Operates on already-indexed content |
+| `list_guardian_issues` | List the issues currently OPEN on a book — the same notes the author sees in the Guardian panel, whoever created them. Optionally narrowed to one chapter |
+| `resolve_guardian_issue` | Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. Dismissal also feeds detector confidence |
 | `orchestrate` | Turn a writing intent (plus optional outline and book context) into a structured generation plan: scene breakdown, consistency constraints, style directives, word target, creative prompt. Spends token quota; needs the `ai` scope |
 
 #### Guardian layers and cost
@@ -163,6 +166,21 @@ fact-delta chain on 2026-08-27, so `/api/ai/extract-facts` no longer exists.
 Nothing replaces it under that name — entity discovery from prose is a
 different contract (a review queue of proposed *new* entities and field
 updates) and will arrive as its own tool.
+
+#### Findings that stay found
+
+Until v1.5.0 a `guardian_check` was a private event: the dispatcher accepted an
+API key but every route that *stores* a `GuardianIssue` refused one, so an MCP
+client could run the full 5-layer pass and the author would open their Guardian
+panel to an empty list. Story Health, which counts exactly those stored rows,
+never moved either.
+
+Creader opened those routes to API keys on 2026-08-29 (`read` to list, `write`
+to save or transition). So a run now lands where the author works, and the two
+sides share one queue: `list_guardian_issues` shows what the author flagged in
+the editor, and an issue you resolve disappears from their panel. Persisting is
+best-effort — if the key lacks `write`, the findings still come back with the
+refusal attached rather than being thrown away.
 
 | Layer | What it checks |
 |-------|----------------|

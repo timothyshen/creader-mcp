@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { installFetchMock, type FetchMock } from "../../helpers/mock-fetch.js"
 import { FakeMcpServer, asToolResult } from "../../helpers/fake-mcp-server.js"
-import { fxChapter } from "../../helpers/fixtures.js"
+import { fxBookSearch, fxChapter } from "../../helpers/fixtures.js"
 import { contentHash } from "../../../src/lib/content-hash.js"
 
 async function setup() {
@@ -19,7 +19,7 @@ describe("chapter tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers all six chapter tools", async () => {
+  it("registers all seven chapter tools", async () => {
     const server = await setup()
     expect(server.names().sort()).toEqual([
       "create_chapter",
@@ -27,6 +27,7 @@ describe("chapter tools", () => {
       "get_chapter",
       "list_chapters",
       "reorder_chapters",
+      "search_book",
       "update_chapter",
     ])
   })
@@ -414,6 +415,98 @@ describe("chapter tools", () => {
       expect(result.content[0].text).toContain("ch_c")
       // No blind retry of the failed or remaining writes.
       expect(fetchMock.calls.length).toBe(3)
+    })
+  })
+
+  describe("search_book", () => {
+    it("reads a bare-JSON reply — the envelope path would fail on this route", async () => {
+      const server = await setup()
+      // mockRaw, not mockSuccess: /search answers with the payload itself. Sent
+      // through the enveloped transport this same body throws "API error: 200",
+      // which is exactly how search_knowledge stayed broken after its URL was
+      // fixed. Asserting a formatted result here pins getRaw.
+      fetchMock.mockRaw(fxBookSearch)
+
+      const result = asToolResult(
+        await server.call("search_book", { bookId: "book_1", query: "harbour" })
+      )
+
+      expect(result.isError).toBeUndefined()
+      expect(fetchMock.lastCall()!.url).toBe(
+        "https://test.creader.local/api/books/book_1/search?q=harbour"
+      )
+      expect(result.content[0].text).toContain('2 matches for "harbour" (text search)')
+      // Chapter order is 0-based on the wire and 1-based to a reader.
+      expect(result.content[0].text).toContain("Ch 4 — The Long Way Down")
+      // The id is what makes a hit actionable: the next call is get_chapter.
+      expect(result.content[0].text).toContain("chapterId:chap_4 @ char 1820")
+    })
+
+    it("passes type and limit through, and percent-encodes the query", async () => {
+      const server = await setup()
+      fetchMock.mockRaw({ ...fxBookSearch, type: "semantic" })
+      await server.call("search_book", {
+        bookId: "book_1",
+        query: "a harbour at dusk",
+        type: "semantic",
+        limit: 5,
+      })
+      expect(fetchMock.lastCall()!.url).toBe(
+        "https://test.creader.local/api/books/book_1/search?q=a+harbour+at+dusk&type=semantic&limit=5"
+      )
+    })
+
+    it("omits type and limit when not given, so the server's defaults apply", async () => {
+      const server = await setup()
+      fetchMock.mockRaw(fxBookSearch)
+      await server.call("search_book", { bookId: "book_1", query: "harbour" })
+      const url = fetchMock.lastCall()!.url
+      expect(url).not.toContain("type=")
+      expect(url).not.toContain("limit=")
+    })
+
+    it("reports an empty text search as a fact about the book", async () => {
+      const server = await setup()
+      fetchMock.mockRaw({ query: "kraken", type: "text", total: 0, results: [] })
+      const result = asToolResult(
+        await server.call("search_book", { bookId: "book_1", query: "kraken" })
+      )
+      expect(result.content[0].text).toBe('No matches for "kraken" in this book\'s prose.')
+    })
+
+    it("refuses to report an empty semantic search as an absence", async () => {
+      const server = await setup()
+      fetchMock.mockRaw({ query: "kraken", type: "semantic", total: 0, results: [] })
+      const result = asToolResult(
+        await server.call("search_book", { bookId: "book_1", query: "kraken", type: "semantic" })
+      )
+      // The route swallows every semantic failure — no embeddings, no embedding
+      // key — and returns []. Identical output to "genuinely not there", so the
+      // model must be told which one it is looking at, or it will state as fact
+      // that a book does not contain something nobody ever indexed.
+      expect(result.content[0].text).toContain("only sees chapters that have been indexed")
+      expect(result.content[0].text).toContain('type:"text"')
+    })
+
+    it("surfaces the route's own error text", async () => {
+      const server = await setup()
+      // A reader or commenter gets this: /search gates on write access.
+      fetchMock.mockHttpError(404, { error: "Book not found" })
+      const result = asToolResult(
+        await server.call("search_book", { bookId: "book_1", query: "harbour" })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("Book not found")
+    })
+
+    it("enforces the server's own bounds before spending a round trip", async () => {
+      const server = await setup()
+      const base = { bookId: "book_1" }
+      expect(server.validate("search_book", { ...base, query: "" }).success).toBe(false)
+      expect(server.validate("search_book", { ...base, query: "x".repeat(501) }).success).toBe(false)
+      expect(server.validate("search_book", { ...base, query: "x", limit: 51 }).success).toBe(false)
+      expect(server.validate("search_book", { ...base, query: "x", limit: 0 }).success).toBe(false)
+      expect(server.validate("search_book", { ...base, query: "x", limit: 50 }).success).toBe(true)
     })
   })
 })

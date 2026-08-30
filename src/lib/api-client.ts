@@ -50,6 +50,32 @@ interface CacheEntry {
   timestamp: number
 }
 
+/**
+ * The sentence to show a caller, out of whichever error shape a route replied in.
+ *
+ * Creader answers errors two ways: the `{ success, error: { code, message } }`
+ * envelope, and a bare `{ error: "Forbidden", type: "scope", message: "This API
+ * key lacks the 'write' scope." }` from the auth layer — where the useful
+ * sentence is in `message`, and `error` is a one-word category.
+ *
+ * Both transports parse it here rather than each keeping its own copy. They did
+ * keep their own copies, and drifted: the enveloped path read only
+ * `error.message`, so every scope denial on an enveloped route reached the model
+ * as the unactionable string "API error: 403" while the raw path named the
+ * missing scope.
+ */
+function parseErrorBody(body: unknown): { message?: string; code?: string } {
+  if (!body || typeof body !== "object") return {}
+  const b = body as {
+    error?: string | { message?: string; code?: string }
+    message?: string
+  }
+  if (typeof b.error === "string") return { message: b.message || b.error }
+  if (b.error?.message) return { message: b.error.message, code: b.error.code }
+  if (b.message) return { message: b.message }
+  return {}
+}
+
 export class CreaderClient {
   private apiKey: string
   private baseUrl: string
@@ -109,8 +135,12 @@ export class CreaderClient {
     const json = (await res.json()) as ApiResponse<T>
 
     if (!res.ok || !json.success) {
-      const msg = json.error?.message || `API error: ${res.status}`
-      throw new ApiRequestError(msg, res.status, json.error?.code)
+      const parsed = parseErrorBody(json)
+      throw new ApiRequestError(
+        parsed.message ?? `API error: ${res.status}`,
+        res.status,
+        parsed.code
+      )
     }
 
     const data = json.data as T
@@ -162,27 +192,17 @@ export class CreaderClient {
     })
 
     if (!res.ok) {
-      let msg = `API error: ${res.status}`
-      let code: string | undefined
+      let parsed: { message?: string; code?: string } = {}
       try {
-        const errJson = (await res.json()) as {
-          error?: string | { message?: string; code?: string }
-          message?: string
-        }
-        const errField = errJson.error
-        if (typeof errField === "string") {
-          // Scope failures reply {error:"Forbidden", type:"scope", message:
-          // "This API key lacks the 'x' scope."} — the useful sentence is in
-          // `message`, not `error`.
-          msg = errJson.message || errField
-        } else if (errField?.message) {
-          msg = errField.message
-          code = errField.code
-        }
+        parsed = parseErrorBody(await res.json())
       } catch {
-        // Response wasn't JSON — keep generic message
+        // Response wasn't JSON — the status is all we have.
       }
-      throw new ApiRequestError(msg, res.status, code)
+      throw new ApiRequestError(
+        parsed.message ?? `API error: ${res.status}`,
+        res.status,
+        parsed.code
+      )
     }
 
     const data = (await res.json()) as T
