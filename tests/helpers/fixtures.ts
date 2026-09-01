@@ -6,6 +6,8 @@ import type {
   BookSearchResponse,
   GenerationPlan,
   PlanSpineResponse,
+  EntityCandidate,
+  EntityFact,
   StyleFingerprint,
   StyleReference,
   PlanThread,
@@ -201,6 +203,30 @@ export const fxPersistedIssue: PersistedGuardianIssue = {
   resolvedBy: null,
   createdAt: "2026-08-29T00:00:00Z",
   updatedAt: "2026-08-29T00:00:00Z",
+}
+
+export const fxEntityCandidate: EntityCandidate = {
+  id: "ec_1",
+  chapterId: "chap_1",
+  name: "harbourmaster",
+  type: "character",
+  descriptionGuess: "Keeps the ferry log; knows who left and when.",
+  status: "PENDING",
+  draftEntityId: "char_draft_1",
+  createdAt: "2026-01-01T00:00:00Z",
+}
+
+export const fxEntityFact: EntityFact = {
+  id: "ef_1",
+  entityType: "character",
+  entityId: "char_1",
+  statement: "Mira keeps the letter unopened",
+  evidence: "she put it back in her coat without breaking the seal",
+  chapterId: "chap_4",
+  chapterTitle: "The Long Way Down",
+  chapterOrderIndex: 3,
+  status: "PENDING",
+  createdAt: "2026-01-01T00:00:00Z",
 }
 
 export const fxStyleFingerprint: StyleFingerprint = {

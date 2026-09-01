@@ -255,6 +255,30 @@ export interface Scene {
     createdAt: string;
     updatedAt: string;
 }
+export interface EntityCandidate {
+    id: string;
+    chapterId: string | null;
+    name: string;
+    /** KnowledgeEntryType: character | location | item | event | note */
+    type: string;
+    descriptionGuess?: string | null;
+    status: string;
+    /** The draft row extraction materialized in the background, if any. */
+    draftEntityId?: string | null;
+    createdAt: string;
+}
+export interface EntityFact {
+    id: string;
+    entityType: string;
+    entityId: string;
+    statement: string;
+    evidence?: string | null;
+    chapterId: string;
+    chapterTitle: string;
+    chapterOrderIndex: number;
+    status: string;
+    createdAt: string;
+}
 /** Mirror of WritingStyleFingerprint in creader-editor's lib/analyzers/style. */
 export interface StyleFingerprint {
     averageSentenceLength: number;

@@ -286,6 +286,36 @@ export interface Scene {
   updatedAt: string
 }
 
+// ── Entity review queues (entity-candidates, entity-facts) ─────────
+// One extraction call fills two queues: NEW entities (EntityCandidate) and
+// facts about entities that already exist (EntityFact). Both enveloped.
+
+export interface EntityCandidate {
+  id: string
+  chapterId: string | null
+  name: string
+  /** KnowledgeEntryType: character | location | item | event | note */
+  type: string
+  descriptionGuess?: string | null
+  status: string
+  /** The draft row extraction materialized in the background, if any. */
+  draftEntityId?: string | null
+  createdAt: string
+}
+
+export interface EntityFact {
+  id: string
+  entityType: string
+  entityId: string
+  statement: string
+  evidence?: string | null
+  chapterId: string
+  chapterTitle: string
+  chapterOrderIndex: number
+  status: string
+  createdAt: string
+}
+
 // ── Style (fingerprint + reference corpus) ─────────────────────────
 // Two different things: the fingerprint is MEASURED from the author's prose,
 // the references are passages they CHOSE. Both routes use the envelope.

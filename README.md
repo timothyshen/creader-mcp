@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (63)
+## Tools (68)
 
 ### Books (4)
 
@@ -110,6 +110,27 @@ the server appends.
 | `list_volumes` | List a book's volumes with chapter counts |
 | `list_acts` | List a book's acts and which volume each belongs to |
 | `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
+
+### Entity review (5)
+
+Extraction proposes; the writer decides. Nothing reaches the world unreviewed.
+
+| Tool | Description |
+|------|-------------|
+| `extract_entity_candidates` | Read one chapter and fill **two** queues in one paid call: new entities, and facts about entities that already exist. Spends token quota (both legs); needs the `ai` scope. Reports when only part of a long chapter was examined |
+| `list_entity_candidates` | New entities awaiting the writer's decision. Free |
+| `triage_entity_candidate` | `ACCEPTED` confirms the draft record into a real entity; `DISMISSED` deletes it. Either way the name is never proposed again |
+| `list_entity_facts` | Proposed facts about existing entities, ordered by the chapter that established each. Free; `status` defaults to `PENDING` |
+| `triage_entity_fact` | `ACCEPTED` **appends to the fact log** — it does not rewrite the author's card. `DISMISSED` keeps the row so the statement is not proposed again |
+
+This is the honest successor to `extract_facts` (removed in v1.4.0 when the
+product deleted its route), not that tool renamed. The old one proposed a delta
+and handed it back for the caller to apply; this is a queue the writer owns.
+
+Both halves ship together on purpose. One `extract_entity_candidates` call runs
+and bills two LLM legs — discovery writes `EntityCandidate` rows, the maintain
+leg writes `EntityFact` rows. Shipping only the candidate half would bill the
+writer for output no client could read.
 
 ### Style (5)
 
