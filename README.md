@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (50)
+## Tools (58)
 
 ### Books (4)
 
@@ -110,6 +110,26 @@ the server appends.
 | `list_volumes` | List a book's volumes with chapter counts |
 | `list_acts` | List a book's acts and which volume each belongs to |
 | `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
+
+### Plan (8)
+
+The book as designed — volumes → acts → chapters → scenes, with beats on
+chapters and subplot threads on volumes.
+
+| Tool | Description |
+|------|-------------|
+| `get_plan_spine` | The whole plan tree in one call, **without chapter prose** — the route returns full Chapter rows, and forwarding them would spend a book of context per call. Chapters belonging to no act come back under `unassignedChapters` rather than disappearing |
+| `list_plot_nodes` | Every beat in the book, flat and ordered by chapter then position |
+| `create_plot_node` | Add a beat to a chapter. Omit `order` to append; `threadIds` attaches subplots; `setupId` records the foreshadowing setup this beat plants (a payoff id is rejected) |
+| `update_plot_node` | Change a beat's wording, position, chapter or threads. `threadIds` **replaces** the set — `[]` detaches from all |
+| `delete_plot_node` | Delete a beat. The chapter and its prose are untouched |
+| `reorder_plot_nodes` | Reposition many beats in one transaction — unlike `reorder_chapters`, one bad id rejects the batch without moving anything |
+| `create_plan_thread` | Create a subplot thread on a volume (the axis beats attach to; `color` drives the grid column) |
+| `apply_structure_template` | Lay down `three-act` / `heros-journey` / `save-the-cat` on an empty plan, atomically. A plan with content is never overwritten — the template is recorded as a declaration and the reply says so |
+
+`POST /plan/generate-beats` is deliberately **not** wrapped: it asks a model to
+invent beats, and the MCP client is already a model. Write the beats, then call
+`create_plot_node`.
 
 ### Knowledge Base (14)
 

@@ -255,6 +255,73 @@ export interface Scene {
     createdAt: string;
     updatedAt: string;
 }
+export interface PlanThread {
+    id: string;
+    volumeId: string;
+    name: string;
+    short?: string | null;
+    /** CSS color; the Plan grid uses it as the column accent. */
+    color: string;
+    orderIndex: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+export interface PlotNode {
+    id: string;
+    chapterId: string;
+    order: number;
+    summary: string;
+    sceneNum?: string | null;
+    /** The kind='setup' ForeshadowingMarker this beat PLANTS. Never a payoff. */
+    setupId?: string | null;
+    eventIds?: string[];
+    /** M2M join rows, not the threads themselves. */
+    threads?: Array<{
+        threadId: string;
+    }>;
+    createdAt?: string;
+    updatedAt?: string;
+}
+/**
+ * A chapter as the spine returns it: the full Chapter row — `content`
+ * included — plus its scenes and beats. get_plan_spine drops everything but
+ * the structural fields; see the header of tools/plan.ts for why.
+ */
+export interface SpineChapter {
+    id: string;
+    title: string;
+    orderIndex: number;
+    status?: string | null;
+    wordCount?: number;
+    content?: string;
+    scenes?: Scene[];
+    plotNodes?: PlotNode[];
+}
+export interface SpineAct {
+    id: string;
+    name: string;
+    orderIndex: number;
+    chapters?: SpineChapter[];
+}
+export interface SpineVolume {
+    id: string;
+    title: string;
+    orderIndex: number;
+    acts?: SpineAct[];
+    threads?: PlanThread[];
+}
+export interface PlanSpineResponse {
+    volumes: SpineVolume[];
+    /** Chapters written in Write that belong to no act — never hidden. */
+    unassignedChapters: SpineChapter[];
+}
+export interface ApplyTemplateResult {
+    templateId: string;
+    acts: number;
+    chapters: number;
+    /** True when the spine already had content and only the declaration was stored. */
+    declaredOnly?: boolean;
+}
 export interface GenerationScene {
     order: number;
     purpose: string;

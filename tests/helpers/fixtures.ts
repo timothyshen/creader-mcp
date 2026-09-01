@@ -5,6 +5,9 @@ import type {
   Character,
   BookSearchResponse,
   GenerationPlan,
+  PlanSpineResponse,
+  PlanThread,
+  PlotNode,
   PersistResult,
   PersistedGuardianIssue,
   Location,
@@ -196,6 +199,84 @@ export const fxPersistedIssue: PersistedGuardianIssue = {
   resolvedBy: null,
   createdAt: "2026-08-29T00:00:00Z",
   updatedAt: "2026-08-29T00:00:00Z",
+}
+
+export const fxThread: PlanThread = {
+  id: "thr_1",
+  volumeId: "vol_1",
+  name: "Mira and the letter",
+  short: "Letter",
+  color: "#C47F5E",
+  orderIndex: 0,
+}
+
+export const fxPlotNode: PlotNode = {
+  id: "pn_1",
+  chapterId: "chap_1",
+  order: 0,
+  summary: "Mira misses the last ferry",
+  sceneNum: null,
+  setupId: null,
+  eventIds: [],
+  threads: [{ threadId: "thr_1" }],
+}
+
+/**
+ * Shaped like the real /plan-spine reply, `content` included — that is the
+ * whole point. The route returns full Chapter rows, so a fixture without prose
+ * could not prove the tool strips it.
+ */
+export const fxPlanSpine: PlanSpineResponse = {
+  volumes: [
+    {
+      id: "vol_1",
+      title: "Part One",
+      orderIndex: 0,
+      threads: [fxThread],
+      acts: [
+        {
+          id: "act_1",
+          name: "Setup",
+          orderIndex: 0,
+          chapters: [
+            {
+              id: "chap_1",
+              title: "Arrival",
+              orderIndex: 0,
+              status: "draft",
+              wordCount: 1200,
+              content: "<p>The harbour lights had gone out one by one.</p>",
+              scenes: [
+                {
+                  id: "scn_1",
+                  bookId: "book_1",
+                  title: "The dock",
+                  orderIndex: 0,
+                  status: "draft",
+                  actId: "act_1",
+                  chapterId: "chap_1",
+                  createdAt: "2026-01-01T00:00:00Z",
+                  updatedAt: "2026-01-01T00:00:00Z",
+                },
+              ],
+              plotNodes: [fxPlotNode],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  unassignedChapters: [
+    {
+      id: "chap_9",
+      title: "Loose page",
+      orderIndex: 8,
+      wordCount: 300,
+      content: "<p>Written in Write, placed nowhere.</p>",
+      scenes: [],
+      plotNodes: [],
+    },
+  ],
 }
 
 export const fxPlan: GenerationPlan = {

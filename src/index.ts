@@ -21,9 +21,10 @@ import { registerStatsTools } from "./tools/stats.js"
 import { registerPublishingTools } from "./tools/publishing.js"
 import { registerRelationTools } from "./tools/relations.js"
 import { registerAITools } from "./tools/ai.js"
+import { registerPlanTools } from "./tools/plan.js"
 
 const server = new McpServer(
-  { name: "creader", version: "1.7.0" },
+  { name: "creader", version: "1.8.0" },
   {
     instructions: [
       "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
@@ -44,10 +45,11 @@ const server = new McpServer(
   }
 )
 
-// Register all 50 tools
+// Register all 58 tools
 registerBookTools(server)
 registerChapterTools(server)
 registerStructureTools(server)
+registerPlanTools(server)
 registerKnowledgeTools(server)
 registerRelationTools(server)
 registerAITools(server)
