@@ -255,6 +255,43 @@ export interface Scene {
     createdAt: string;
     updatedAt: string;
 }
+/** Mirror of WritingStyleFingerprint in creader-editor's lib/analyzers/style. */
+export interface StyleFingerprint {
+    averageSentenceLength: number;
+    averageParagraphLength: number;
+    vocabularyDiversity: number;
+    commonWords: Array<{
+        word: string;
+        count: number;
+    }>;
+    sentenceStructure: {
+        simple: number;
+        compound: number;
+        complex: number;
+    };
+    tone: "formal" | "casual" | "mixed";
+    pov: "first" | "second" | "third" | "mixed";
+    tense: "past" | "present" | "mixed";
+}
+export interface StyleFingerprintResponse {
+    /** Null until the analyzer has enough prose to measure. */
+    styleFingerprint: StyleFingerprint | null;
+}
+export interface StyleReference {
+    id: string;
+    content: string;
+    source: string;
+    tweetId?: string | null;
+    tweetDate?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+export interface StyleReferencesResponse {
+    /** Whether Creader feeds the references into its own AI calls. */
+    styleEnabled: boolean;
+    references: StyleReference[];
+    count: number;
+}
 export interface PlanThread {
     id: string;
     volumeId: string;

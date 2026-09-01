@@ -6,6 +6,8 @@ import type {
   BookSearchResponse,
   GenerationPlan,
   PlanSpineResponse,
+  StyleFingerprint,
+  StyleReference,
   PlanThread,
   PlotNode,
   PersistResult,
@@ -199,6 +201,30 @@ export const fxPersistedIssue: PersistedGuardianIssue = {
   resolvedBy: null,
   createdAt: "2026-08-29T00:00:00Z",
   updatedAt: "2026-08-29T00:00:00Z",
+}
+
+export const fxStyleFingerprint: StyleFingerprint = {
+  averageSentenceLength: 14.2,
+  averageParagraphLength: 3.1,
+  vocabularyDiversity: 0.42,
+  commonWords: [
+    { word: "harbour", count: 31 },
+    { word: "letter", count: 24 },
+  ],
+  sentenceStructure: { simple: 0.5, compound: 0.3, complex: 0.2 },
+  tone: "formal",
+  pov: "third",
+  tense: "past",
+}
+
+export const fxStyleReference: StyleReference = {
+  id: "sr_1",
+  content: "The tide came in the way bad news does: all at once, and then everywhere.",
+  source: "manual",
+  tweetId: null,
+  tweetDate: null,
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-01T00:00:00Z",
 }
 
 export const fxThread: PlanThread = {

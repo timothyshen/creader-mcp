@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (58)
+## Tools (63)
 
 ### Books (4)
 
@@ -110,6 +110,30 @@ the server appends.
 | `list_volumes` | List a book's volumes with chapter counts |
 | `list_acts` | List a book's acts and which volume each belongs to |
 | `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
+
+### Style (5)
+
+Two different things share the word. The **fingerprint** is measured from the
+author's prose; the **references** are passages they chose.
+
+| Tool | Description |
+|------|-------------|
+| `get_style` | The book's measured style fingerprint — sentence/paragraph length, vocabulary diversity, structure mix, tone, POV, tense, commonest words. `null` means not yet computed, not styleless |
+| `list_style_references` | The author's chosen exemplar passages, plus whether style learning is on |
+| `add_style_references` | Add passages to the voice corpus (≤50 per call, ≤2000 chars each, 500 per book). Reports when the server trimmed the batch to fit the cap. Creator plan |
+| `delete_style_reference` | Remove one exemplar. No prose is touched |
+| `set_style_learning` | Whether Creader feeds the references into its own AI calls. Creator plan |
+
+There is deliberately **no `set_style`**. `PUT /style` exists and takes an API
+key, so the tool would have been two lines — but the fingerprint is a
+*measurement* of prose that exists, computed by the style analyzer. A model
+authoring one fabricates the measurement, and every later AI call on that book
+is steered by it: chat, inline, the L2 detectors. It fails silently, in the
+wrong voice.
+
+The Twitter-archive import is not wrapped either — it is a multipart file
+upload, and the same rows can be created through `add_style_references` with
+source `archive_import`.
 
 ### Plan (8)
 

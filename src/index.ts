@@ -22,9 +22,10 @@ import { registerPublishingTools } from "./tools/publishing.js"
 import { registerRelationTools } from "./tools/relations.js"
 import { registerAITools } from "./tools/ai.js"
 import { registerPlanTools } from "./tools/plan.js"
+import { registerStyleTools } from "./tools/style.js"
 
 const server = new McpServer(
-  { name: "creader", version: "1.8.0" },
+  { name: "creader", version: "1.9.0" },
   {
     instructions: [
       "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
@@ -36,6 +37,7 @@ const server = new McpServer(
       "Two different searches, and picking the wrong one is the common mistake: search_book searches the PROSE and returns chapters with snippets — that is the only way to look inside the manuscript; search_knowledge searches entity RECORDS (character/location/event/note names and descriptions) — use its type filter to narrow. Reach for search_book before reading chapters in bulk.",
       "search_book has two modes. 'text' is exact substring and exhaustive, so nothing found means nothing is there. 'semantic' is meaning-based and only sees chapters that have been indexed — it returns an empty result rather than an error when they have not been, so never report an empty semantic search as proof the book lacks something.",
       "World constraints are notes: noteType 'rule' is a law the AI must obey, 'prohibition' is one it must never break. Creader force-injects both into every AI prompt for the book, unlike ordinary notes, so record hard world laws that way. Their count is capped per subscription tier.",
+      "Two different things are called style. The FINGERPRINT (get_style) is measured from the author's own prose — sentence lengths, vocabulary diversity, tone, POV, tense — and is the thing to match when drafting or revising; null means not yet computed, never that the author has no voice. The REFERENCES (list_style_references) are passages the author chose as exemplars. Read both before writing prose into a book. There is deliberately no tool that writes the fingerprint: it is a measurement, and inventing one silently steers every later AI call on that book.",
       "Deprecation notice: the 12 per-type knowledge CRUD tools (create/update/delete_ × character/location/event/note) will be consolidated into create_entity/update_entity/delete_entity with a type discriminator in v2.0.0. They remain fully functional throughout 1.x — keep using them for now.",
       "Use list_relations to see entity-to-entity relationships (e.g. character allies, location containment).",
       "AI checks: guardian_check runs the 5-layer narrative Guardian on one chapter — pick layers (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure) and a costBudget; the default 'local' budget is free and makes no model calls, 'api-heavy' spends token quota. vector_check finds cross-book semantic conflicts in already-indexed content.",
@@ -45,11 +47,12 @@ const server = new McpServer(
   }
 )
 
-// Register all 58 tools
+// Register all 63 tools
 registerBookTools(server)
 registerChapterTools(server)
 registerStructureTools(server)
 registerPlanTools(server)
+registerStyleTools(server)
 registerKnowledgeTools(server)
 registerRelationTools(server)
 registerAITools(server)
