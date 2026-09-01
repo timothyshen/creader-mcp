@@ -1,6 +1,6 @@
 {
   "name": "@creader/mcp-server",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "mcpName": "io.creader/mcp-server",
   "description": "MCP server for Creader — access your stories, knowledge base, and AI tools from any MCP client",
   "license": "MIT",

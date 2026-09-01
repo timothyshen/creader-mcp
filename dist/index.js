@@ -18,11 +18,12 @@ import { registerStatsTools } from "./tools/stats.js";
 import { registerPublishingTools } from "./tools/publishing.js";
 import { registerRelationTools } from "./tools/relations.js";
 import { registerAITools } from "./tools/ai.js";
-const server = new McpServer({ name: "creader", version: "1.6.0" }, {
+const server = new McpServer({ name: "creader", version: "1.7.0" }, {
     instructions: [
         "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
         "Books must exist before creating chapters or knowledge entries.",
-        "Structure: a book is organised volume → act → chapter → scene. list_volumes / list_acts / list_scenes expose the levels around chapters; acts carry their volumeId, scenes their chapterId/actId.",
+        "Structure: a book is organised volume → act → chapter → scene. list/create/update/delete exist for volumes, acts and scenes; acts carry their volumeId, scenes their chapterId/actId. Acts are NAMED (`name`), volumes and scenes are TITLED (`title`). Omit orderIndex to append at the end.",
+        "delete_volume and delete_act are not row deletes: the server also destroys every chapter underneath — prose included — and those chapters' scenes. Both tools count the casualties first and refuse until you pass that exact number as confirmChapterCount. To keep the prose, move the chapters with update_chapter first. delete_scene takes nothing with it.",
         "Use list_chapters to see chapter IDs, then get_chapter to read content. Always get_chapter before update_chapter when writing prose — update_chapter needs the baseContentHash get_chapter returns, and rejects the write as a conflict if the editor changed the chapter meanwhile.",
         "delete_chapter is permanent and renumbers later chapters. reorder_chapters takes the COMPLETE list of chapter IDs in the new order.",
         "Two different searches, and picking the wrong one is the common mistake: search_book searches the PROSE and returns chapters with snippets — that is the only way to look inside the manuscript; search_knowledge searches entity RECORDS (character/location/event/note names and descriptions) — use its type filter to narrow. Reach for search_book before reading chapters in bulk.",
@@ -35,7 +36,7 @@ const server = new McpServer({ name: "creader", version: "1.6.0" }, {
         "AI writing aid (spends token quota, needs the 'ai' scope): orchestrate turns an intent into a structured generation plan to guide drafting.",
     ].join(" "),
 });
-// Register all 41 tools
+// Register all 50 tools
 registerBookTools(server);
 registerChapterTools(server);
 registerStructureTools(server);
