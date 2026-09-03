@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { installFetchMock, type FetchMock } from "../../helpers/mock-fetch.js"
 import { FakeMcpServer, asToolResult } from "../../helpers/fake-mcp-server.js"
-import { fxVolume, fxAct, fxScene } from "../../helpers/fixtures.js"
+import { fxVolume, fxAct, fxScene, fxChapter } from "../../helpers/fixtures.js"
 
 async function setup() {
   vi.resetModules()
@@ -18,9 +18,22 @@ describe("structure tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers the three structural read tools", async () => {
+  it("registers reads and writes for all three levels", async () => {
     const server = await setup()
-    expect(server.names().sort()).toEqual(["list_acts", "list_scenes", "list_volumes"])
+    expect(server.names().sort()).toEqual([
+      "create_act",
+      "create_scene",
+      "create_volume",
+      "delete_act",
+      "delete_scene",
+      "delete_volume",
+      "list_acts",
+      "list_scenes",
+      "list_volumes",
+      "update_act",
+      "update_scene",
+      "update_volume",
+    ])
   })
 
   describe("list_volumes", () => {
@@ -91,5 +104,183 @@ describe("structure tools", () => {
     const result = asToolResult(await server.call("list_volumes", { bookId: "nope" }))
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain("no such book")
+  })
+
+  describe("creates", () => {
+    it("create_volume POSTs to the book's volume collection", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxVolume, title: "Volume Three", orderIndex: 2 })
+      const result = asToolResult(
+        await server.call("create_volume", { bookId: "book_1", title: "Volume Three" })
+      )
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("POST")
+      expect(call.url).toBe("https://test.creader.local/api/books/book_1/volumes")
+      // bookId travels in the path, never in the body.
+      expect(call.body).toEqual({ title: "Volume Three" })
+      expect(result.content[0].text).toContain("Created volume: Volume Three (order 2)")
+    })
+
+    it("create_act uses `name`, not `title`", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxAct, name: "Act Two", volumeId: "vol_1" })
+      await server.call("create_act", { bookId: "book_1", name: "Act Two", volumeId: "vol_1" })
+      expect(fetchMock.lastCall()!.body).toEqual({ name: "Act Two", volumeId: "vol_1" })
+      // The one field name that differs across the three levels; getting it
+      // wrong is a 400 the model cannot diagnose from the message.
+      expect(server.validate("create_act", { bookId: "b", title: "x" }).success).toBe(false)
+    })
+
+    it("create_scene links to a chapter and act", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxScene, title: "The confrontation", chapterId: "chap_4" })
+      await server.call("create_scene", {
+        bookId: "book_1",
+        title: "The confrontation",
+        chapterId: "chap_4",
+        actId: "act_1",
+        pov: "Alice",
+      })
+      expect(fetchMock.lastCall()!.body).toEqual({
+        title: "The confrontation",
+        chapterId: "chap_4",
+        actId: "act_1",
+        pov: "Alice",
+      })
+    })
+
+    it("omits orderIndex when not given, so the server appends", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxVolume)
+      await server.call("create_volume", { bookId: "book_1", title: "X" })
+      expect(fetchMock.lastCall()!.body).not.toHaveProperty("orderIndex")
+    })
+  })
+
+  describe("updates", () => {
+    it("update_volume PATCHes the item route with only what changed", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxVolume, title: "Renamed" })
+      await server.call("update_volume", { id: "vol_1", title: "Renamed" })
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("PATCH")
+      expect(call.url).toBe("https://test.creader.local/api/volumes/vol_1")
+      expect(call.body).toEqual({ title: "Renamed" })
+    })
+
+    it("update_act can detach from a volume with an explicit null", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxAct, volumeId: null })
+      await server.call("update_act", { id: "act_1", volumeId: null })
+      // null must survive as null — dropping it would silently keep the link.
+      expect(fetchMock.lastCall()!.body).toEqual({ volumeId: null })
+    })
+
+    it("update_scene PATCHes /api/scenes/:id", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxScene, status: "written" })
+      await server.call("update_scene", { id: "scene_1", status: "written" })
+      expect(fetchMock.lastCall()!.url).toBe("https://test.creader.local/api/scenes/scene_1")
+    })
+  })
+
+  describe("container deletes guard the prose underneath", () => {
+    /** Chapters as the list route returns them, with their parent ids. */
+    const chapters = [
+      { ...fxChapter, id: "c1", title: "One", wordCount: 1200, volumeId: "vol_1", actId: null },
+      { ...fxChapter, id: "c2", title: "Two", wordCount: 900, volumeId: null, actId: "act_1" },
+      { ...fxChapter, id: "c3", title: "Three", wordCount: 50, volumeId: null, actId: "act_9" },
+    ]
+    const acts = [
+      { ...fxAct, id: "act_1", volumeId: "vol_1" },
+      { ...fxAct, id: "act_9", volumeId: "vol_9" },
+    ]
+
+    it("refuses a volume delete that would take prose with it", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(chapters).mockSuccess(acts)
+
+      const result = asToolResult(
+        await server.call("delete_volume", { bookId: "book_1", id: "vol_1" })
+      )
+
+      expect(result.isError).toBe(true)
+      // Chapters reached BOTH ways count: c1 hangs off the volume, c2 off one
+      // of its acts. Counting only the direct children would understate the
+      // damage and let the caller confirm a number smaller than reality.
+      expect(result.content[0].text).toContain("deletes 2 chapter(s)")
+      expect(result.content[0].text).toContain("One (1200 words)")
+      expect(result.content[0].text).toContain("Two (900 words)")
+      expect(result.content[0].text).toContain("confirmChapterCount:2")
+      // c3 lives under another volume and must not appear.
+      expect(result.content[0].text).not.toContain("Three")
+      // Nothing was sent.
+      expect(fetchMock.calls.every(c => c.method === "GET")).toBe(true)
+    })
+
+    it("refuses a confirmation that does not match the real count", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(chapters).mockSuccess(acts)
+      const result = asToolResult(
+        await server.call("delete_volume", {
+          bookId: "book_1",
+          id: "vol_1",
+          confirmChapterCount: 1,
+        })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("You passed confirmChapterCount:1")
+      expect(fetchMock.calls.every(c => c.method === "GET")).toBe(true)
+    })
+
+    it("proceeds when the confirmed number matches", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(chapters).mockSuccess(acts).mockSuccess(null)
+      const result = asToolResult(
+        await server.call("delete_volume", {
+          bookId: "book_1",
+          id: "vol_1",
+          confirmChapterCount: 2,
+        })
+      )
+      expect(result.isError).toBeUndefined()
+      const del = fetchMock.lastCall()!
+      expect(del.method).toBe("DELETE")
+      expect(del.url).toBe("https://test.creader.local/api/volumes/vol_1")
+      expect(result.content[0].text).toContain("along with 2 chapter(s)")
+    })
+
+    it("deletes an empty container without asking", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(chapters).mockSuccess(acts).mockSuccess(null)
+      const result = asToolResult(
+        await server.call("delete_volume", { bookId: "book_1", id: "vol_empty" })
+      )
+      expect(result.isError).toBeUndefined()
+      expect(result.content[0].text).toContain("held no chapters")
+      expect(fetchMock.lastCall()!.method).toBe("DELETE")
+    })
+
+    it("delete_act counts only its own chapters", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(chapters)
+      const result = asToolResult(
+        await server.call("delete_act", { bookId: "book_1", id: "act_1" })
+      )
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("deletes 1 chapter(s)")
+      expect(result.content[0].text).toContain("Two (900 words)")
+      // An act delete does not reach across to the volume's other chapters.
+      expect(result.content[0].text).not.toContain("One (1200 words)")
+    })
+
+    it("delete_scene needs no confirmation — it takes nothing with it", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(null)
+      const result = asToolResult(await server.call("delete_scene", { id: "scene_1" }))
+      expect(result.isError).toBeUndefined()
+      expect(fetchMock.calls).toHaveLength(1)
+      expect(fetchMock.lastCall()!.method).toBe("DELETE")
+    })
   })
 })

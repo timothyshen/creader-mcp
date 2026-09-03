@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (41)
+## Tools (50)
 
 ### Books (4)
 
@@ -95,12 +95,15 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `search_book` | Search the book's **prose** and get back matching chapters with snippets, character offsets and chapter ids. `text` (exact substring, CJK-safe, exhaustive) or `semantic` (meaning-based, indexed chapters only). Not the same as `search_knowledge`, which searches entity records |
 | `reorder_chapters` | Reorder a book's chapters. Takes the complete chapter-ID list in the new order; writes only the positions that changed. The server has no atomic reorder, so an interrupted run reports exactly which chapters moved and is safe to re-run |
 
-### Structure (3)
+### Structure (12)
 
-Creader organises a book as **volume → act → chapter → scene**. These read-only
-tools expose the levels around chapters, so an agent can navigate the whole
-spine (acts carry their `volumeId`; scenes carry their `chapterId`/`actId`).
-Structure writes stay in the editor for now.
+Creader organises a book as **volume → act → chapter → scene**. Full CRUD on
+all three levels around chapters, so an agent can build the spine it writes
+into (acts carry their `volumeId`; scenes carry their `chapterId`/`actId`).
+
+Two naming traps: acts are **named** (`name`) while volumes and scenes are
+**titled** (`title`); and `orderIndex` is scoped to the parent, so omit it and
+the server appends.
 
 | Tool | Description |
 |------|-------------|

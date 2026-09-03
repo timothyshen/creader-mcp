@@ -21,6 +21,10 @@ export interface Chapter {
   content?: string
   orderIndex: number
   wordCount: number
+  /** Set when the chapter hangs off a volume / act. The list route returns
+   *  both; they are what makes a container delete's blast radius computable. */
+  volumeId?: string | null
+  actId?: string | null
   createdAt: string
   updatedAt: string
 }
