@@ -5,6 +5,13 @@ import type {
   Character,
   BookSearchResponse,
   GenerationPlan,
+  PlanSpineResponse,
+  EntityCandidate,
+  EntityFact,
+  StyleFingerprint,
+  StyleReference,
+  PlanThread,
+  PlotNode,
   PersistResult,
   PersistedGuardianIssue,
   Location,
@@ -196,6 +203,132 @@ export const fxPersistedIssue: PersistedGuardianIssue = {
   resolvedBy: null,
   createdAt: "2026-08-29T00:00:00Z",
   updatedAt: "2026-08-29T00:00:00Z",
+}
+
+export const fxEntityCandidate: EntityCandidate = {
+  id: "ec_1",
+  chapterId: "chap_1",
+  name: "harbourmaster",
+  type: "character",
+  descriptionGuess: "Keeps the ferry log; knows who left and when.",
+  status: "PENDING",
+  draftEntityId: "char_draft_1",
+  createdAt: "2026-01-01T00:00:00Z",
+}
+
+export const fxEntityFact: EntityFact = {
+  id: "ef_1",
+  entityType: "character",
+  entityId: "char_1",
+  statement: "Mira keeps the letter unopened",
+  evidence: "she put it back in her coat without breaking the seal",
+  chapterId: "chap_4",
+  chapterTitle: "The Long Way Down",
+  chapterOrderIndex: 3,
+  status: "PENDING",
+  createdAt: "2026-01-01T00:00:00Z",
+}
+
+export const fxStyleFingerprint: StyleFingerprint = {
+  averageSentenceLength: 14.2,
+  averageParagraphLength: 3.1,
+  vocabularyDiversity: 0.42,
+  commonWords: [
+    { word: "harbour", count: 31 },
+    { word: "letter", count: 24 },
+  ],
+  sentenceStructure: { simple: 0.5, compound: 0.3, complex: 0.2 },
+  tone: "formal",
+  pov: "third",
+  tense: "past",
+}
+
+export const fxStyleReference: StyleReference = {
+  id: "sr_1",
+  content: "The tide came in the way bad news does: all at once, and then everywhere.",
+  source: "manual",
+  tweetId: null,
+  tweetDate: null,
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-01T00:00:00Z",
+}
+
+export const fxThread: PlanThread = {
+  id: "thr_1",
+  volumeId: "vol_1",
+  name: "Mira and the letter",
+  short: "Letter",
+  color: "#C47F5E",
+  orderIndex: 0,
+}
+
+export const fxPlotNode: PlotNode = {
+  id: "pn_1",
+  chapterId: "chap_1",
+  order: 0,
+  summary: "Mira misses the last ferry",
+  sceneNum: null,
+  setupId: null,
+  eventIds: [],
+  threads: [{ threadId: "thr_1" }],
+}
+
+/**
+ * Shaped like the real /plan-spine reply, `content` included — that is the
+ * whole point. The route returns full Chapter rows, so a fixture without prose
+ * could not prove the tool strips it.
+ */
+export const fxPlanSpine: PlanSpineResponse = {
+  volumes: [
+    {
+      id: "vol_1",
+      title: "Part One",
+      orderIndex: 0,
+      threads: [fxThread],
+      acts: [
+        {
+          id: "act_1",
+          name: "Setup",
+          orderIndex: 0,
+          chapters: [
+            {
+              id: "chap_1",
+              title: "Arrival",
+              orderIndex: 0,
+              status: "draft",
+              wordCount: 1200,
+              content: "<p>The harbour lights had gone out one by one.</p>",
+              scenes: [
+                {
+                  id: "scn_1",
+                  bookId: "book_1",
+                  title: "The dock",
+                  orderIndex: 0,
+                  status: "draft",
+                  actId: "act_1",
+                  chapterId: "chap_1",
+                  createdAt: "2026-01-01T00:00:00Z",
+                  updatedAt: "2026-01-01T00:00:00Z",
+                },
+              ],
+              plotNodes: [fxPlotNode],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  unassignedChapters: [
+    {
+      id: "chap_9",
+      title: "Loose page",
+      orderIndex: 8,
+      wordCount: 300,
+      content: "<p>Written in Write, placed nowhere.</p>",
+      scenes: [],
+      plotNodes: [],
+    },
+  ],
 }
 
 export const fxPlan: GenerationPlan = {

@@ -286,6 +286,151 @@ export interface Scene {
   updatedAt: string
 }
 
+// ── Entity review queues (entity-candidates, entity-facts) ─────────
+// One extraction call fills two queues: NEW entities (EntityCandidate) and
+// facts about entities that already exist (EntityFact). Both enveloped.
+
+export interface EntityCandidate {
+  id: string
+  chapterId: string | null
+  name: string
+  /** KnowledgeEntryType: character | location | item | event | note */
+  type: string
+  descriptionGuess?: string | null
+  status: string
+  /** The draft row extraction materialized in the background, if any. */
+  draftEntityId?: string | null
+  createdAt: string
+}
+
+export interface EntityFact {
+  id: string
+  entityType: string
+  entityId: string
+  statement: string
+  evidence?: string | null
+  chapterId: string
+  chapterTitle: string
+  chapterOrderIndex: number
+  status: string
+  createdAt: string
+}
+
+// ── Style (fingerprint + reference corpus) ─────────────────────────
+// Two different things: the fingerprint is MEASURED from the author's prose,
+// the references are passages they CHOSE. Both routes use the envelope.
+
+/** Mirror of WritingStyleFingerprint in creader-editor's lib/analyzers/style. */
+export interface StyleFingerprint {
+  averageSentenceLength: number
+  averageParagraphLength: number
+  vocabularyDiversity: number
+  commonWords: Array<{ word: string; count: number }>
+  sentenceStructure: { simple: number; compound: number; complex: number }
+  tone: "formal" | "casual" | "mixed"
+  pov: "first" | "second" | "third" | "mixed"
+  tense: "past" | "present" | "mixed"
+}
+
+export interface StyleFingerprintResponse {
+  /** Null until the analyzer has enough prose to measure. */
+  styleFingerprint: StyleFingerprint | null
+}
+
+export interface StyleReference {
+  id: string
+  content: string
+  source: string
+  tweetId?: string | null
+  tweetDate?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StyleReferencesResponse {
+  /** Whether Creader feeds the references into its own AI calls. */
+  styleEnabled: boolean
+  references: StyleReference[]
+  count: number
+}
+
+// ── Plan (plan-spine, plot-nodes, threads, structure template) ─────
+// The book as designed: volumes → acts → chapters → scenes, with beats
+// (PlotNode) on chapters and subplot threads (PlanThread) on volumes.
+// All of these routes use the { success, data } envelope.
+
+export interface PlanThread {
+  id: string
+  volumeId: string
+  name: string
+  short?: string | null
+  /** CSS color; the Plan grid uses it as the column accent. */
+  color: string
+  orderIndex: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface PlotNode {
+  id: string
+  chapterId: string
+  order: number
+  summary: string
+  sceneNum?: string | null
+  /** The kind='setup' ForeshadowingMarker this beat PLANTS. Never a payoff. */
+  setupId?: string | null
+  eventIds?: string[]
+  /** M2M join rows, not the threads themselves. */
+  threads?: Array<{ threadId: string }>
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * A chapter as the spine returns it: the full Chapter row — `content`
+ * included — plus its scenes and beats. get_plan_spine drops everything but
+ * the structural fields; see the header of tools/plan.ts for why.
+ */
+export interface SpineChapter {
+  id: string
+  title: string
+  orderIndex: number
+  status?: string | null
+  wordCount?: number
+  content?: string
+  scenes?: Scene[]
+  plotNodes?: PlotNode[]
+}
+
+export interface SpineAct {
+  id: string
+  name: string
+  orderIndex: number
+  chapters?: SpineChapter[]
+}
+
+export interface SpineVolume {
+  id: string
+  title: string
+  orderIndex: number
+  acts?: SpineAct[]
+  threads?: PlanThread[]
+}
+
+export interface PlanSpineResponse {
+  volumes: SpineVolume[]
+  /** Chapters written in Write that belong to no act — never hidden. */
+  unassignedChapters: SpineChapter[]
+}
+
+export interface ApplyTemplateResult {
+  templateId: string
+  acts: number
+  chapters: number
+  /** True when the spine already had content and only the declaration was stored. */
+  declaredOnly?: boolean
+}
+
 // ── Generation planning (/api/ai/orchestrate) ──────────────────────
 // Mirror of generationPlanSchema in creader-editor's types/generation-types.ts.
 // Also a bare `{ success, plan }` reply.

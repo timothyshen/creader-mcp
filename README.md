@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (50)
+## Tools (68)
 
 ### Books (4)
 
@@ -110,6 +110,71 @@ the server appends.
 | `list_volumes` | List a book's volumes with chapter counts |
 | `list_acts` | List a book's acts and which volume each belongs to |
 | `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
+
+### Entity review (5)
+
+Extraction proposes; the writer decides. Nothing reaches the world unreviewed.
+
+| Tool | Description |
+|------|-------------|
+| `extract_entity_candidates` | Read one chapter and fill **two** queues in one paid call: new entities, and facts about entities that already exist. Spends token quota (both legs); needs the `ai` scope. Reports when only part of a long chapter was examined |
+| `list_entity_candidates` | New entities awaiting the writer's decision. Free |
+| `triage_entity_candidate` | `ACCEPTED` confirms the draft record into a real entity; `DISMISSED` deletes it. Either way the name is never proposed again |
+| `list_entity_facts` | Proposed facts about existing entities, ordered by the chapter that established each. Free; `status` defaults to `PENDING` |
+| `triage_entity_fact` | `ACCEPTED` **appends to the fact log** — it does not rewrite the author's card. `DISMISSED` keeps the row so the statement is not proposed again |
+
+This is the honest successor to `extract_facts` (removed in v1.4.0 when the
+product deleted its route), not that tool renamed. The old one proposed a delta
+and handed it back for the caller to apply; this is a queue the writer owns.
+
+Both halves ship together on purpose. One `extract_entity_candidates` call runs
+and bills two LLM legs — discovery writes `EntityCandidate` rows, the maintain
+leg writes `EntityFact` rows. Shipping only the candidate half would bill the
+writer for output no client could read.
+
+### Style (5)
+
+Two different things share the word. The **fingerprint** is measured from the
+author's prose; the **references** are passages they chose.
+
+| Tool | Description |
+|------|-------------|
+| `get_style` | The book's measured style fingerprint — sentence/paragraph length, vocabulary diversity, structure mix, tone, POV, tense, commonest words. `null` means not yet computed, not styleless |
+| `list_style_references` | The author's chosen exemplar passages, plus whether style learning is on |
+| `add_style_references` | Add passages to the voice corpus (≤50 per call, ≤2000 chars each, 500 per book). Reports when the server trimmed the batch to fit the cap. Creator plan |
+| `delete_style_reference` | Remove one exemplar. No prose is touched |
+| `set_style_learning` | Whether Creader feeds the references into its own AI calls. Creator plan |
+
+There is deliberately **no `set_style`**. `PUT /style` exists and takes an API
+key, so the tool would have been two lines — but the fingerprint is a
+*measurement* of prose that exists, computed by the style analyzer. A model
+authoring one fabricates the measurement, and every later AI call on that book
+is steered by it: chat, inline, the L2 detectors. It fails silently, in the
+wrong voice.
+
+The Twitter-archive import is not wrapped either — it is a multipart file
+upload, and the same rows can be created through `add_style_references` with
+source `archive_import`.
+
+### Plan (8)
+
+The book as designed — volumes → acts → chapters → scenes, with beats on
+chapters and subplot threads on volumes.
+
+| Tool | Description |
+|------|-------------|
+| `get_plan_spine` | The whole plan tree in one call, **without chapter prose** — the route returns full Chapter rows, and forwarding them would spend a book of context per call. Chapters belonging to no act come back under `unassignedChapters` rather than disappearing |
+| `list_plot_nodes` | Every beat in the book, flat and ordered by chapter then position |
+| `create_plot_node` | Add a beat to a chapter. Omit `order` to append; `threadIds` attaches subplots; `setupId` records the foreshadowing setup this beat plants (a payoff id is rejected) |
+| `update_plot_node` | Change a beat's wording, position, chapter or threads. `threadIds` **replaces** the set — `[]` detaches from all |
+| `delete_plot_node` | Delete a beat. The chapter and its prose are untouched |
+| `reorder_plot_nodes` | Reposition many beats in one transaction — unlike `reorder_chapters`, one bad id rejects the batch without moving anything |
+| `create_plan_thread` | Create a subplot thread on a volume (the axis beats attach to; `color` drives the grid column) |
+| `apply_structure_template` | Lay down `three-act` / `heros-journey` / `save-the-cat` on an empty plan, atomically. A plan with content is never overwritten — the template is recorded as a declaration and the reply says so |
+
+`POST /plan/generate-beats` is deliberately **not** wrapped: it asks a model to
+invent beats, and the MCP client is already a model. Write the beats, then call
+`create_plot_node`.
 
 ### Knowledge Base (14)
 
