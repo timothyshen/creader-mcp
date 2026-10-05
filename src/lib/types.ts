@@ -169,9 +169,9 @@ export interface GuardianLayerReport {
 
 // ── Persisted Guardian issues (/books/:id/guardian/issues) ─────────
 // The durable record behind the author's Guardian panel and Story Health.
-// A run's findings are transient until they are POSTed here. Both routes
-// answered session cookies only until 2026-08-29 — see the tool comments in
-// tools/ai.ts for what that cost.
+// The run route writes these rows itself, for every run; this side only lists
+// them (GET, OPEN only) and transitions them (PATCH, by fingerprint). Both
+// routes answered session cookies only until 2026-08-29.
 
 export interface PersistedGuardianIssue {
   id: string
@@ -196,12 +196,6 @@ export interface PersistedGuardianIssue {
   updatedAt: string
 }
 
-export interface PersistResult {
-  upsertedCount: number
-  autoResolvedCount: number
-  persistedIds: string[]
-}
-
 export interface GuardianRunResponse {
   reports: GuardianLayerReport[]
   /** Flattened, deduplicated issues across every layer that ran. */
@@ -210,6 +204,13 @@ export interface GuardianRunResponse {
   durationMs: number
   traceId: string
   usage: { totalTokens: number }
+  /**
+   * Present, and `false`, only on a run whose issue rows failed to write —
+   * wholly or in part. The route persists every run itself; absence means it did.
+   */
+  persisted?: false
+  /** Why a 200 is not an ordinary run. Absent on one that is. */
+  code?: "GUARDIAN_PERSIST_FAILED" | "GUARDIAN_NO_RUNNABLE_LAYERS" | (string & {})
 }
 
 // ── Book search (/books/:id/search) ────────────────────────────────

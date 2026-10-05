@@ -42,7 +42,7 @@ A book is organised volume → act → chapter → scene.
 
 ### AI
 - `generate_outline` — Generate a story outline from a premise
-- `guardian_check` — 5-layer narrative Guardian on one chapter (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure); the default `local` budget is free, `api-heavy` spends token quota
+- `guardian_check` — 5-layer narrative Guardian on one chapter (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure); the default `local` budget is free, `api-heavy` spends token quota. Every run is saved to the book by the server (the author sees it in their Guardian panel) and needs the `ai` and `write` scopes
 - `vector_check` — Cross-book semantic conflict detection using embeddings (duplicates, character contradictions, timeline, location mismatch)
 - `extract_facts` — Propose knowledge-base updates from a chapter's prose; proposals come back pending — apply accepted ones with the `update_*` tools (spends token quota)
 - `orchestrate` — Turn a writing intent into a structured generation plan: scene breakdown, constraints, style directives, word target (spends token quota)
