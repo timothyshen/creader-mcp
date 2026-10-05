@@ -21,8 +21,8 @@ import { toolError } from "../lib/errors.js";
 import { stripHtmlForPositions } from "../lib/html-text.js";
 /** Server-side zod cap on both plainContent and htmlContent. */
 const MAX_CONTENT_CHARS = 200_000;
-/** Server-side zod cap on one POST to /guardian/issues. */
-const MAX_PERSISTED_ISSUES = 200;
+/** Rides a 200 from the run route when every requested layer was filtered away. */
+const NO_RUNNABLE_LAYERS = "GUARDIAN_NO_RUNNABLE_LAYERS";
 export function registerAITools(server) {
     server.tool("generate_outline", "Generate a story outline based on a premise. Returns structured chapter suggestions.", {
         title: z.string().describe("Book/story title"),
@@ -63,13 +63,17 @@ export function registerAITools(server) {
         "but it only reaches the rule-based detectors, so layer 3 returns nothing under it",
         "and layers 1/2/4/5 return only their local subset (this includes cliche and",
         "repetition, but NOT proofreading or POV leak, which are model detectors).",
-        "Use 'api-heavy' for a full pass: it spends the owner's token quota and needs an",
-        "API key with the 'ai' scope. Findings carry char-offset textPosition into the",
+        "Use 'api-heavy' for a full pass: it spends the owner's token quota.",
+        "Every run, 'local' included, needs an API key with both the 'ai' and 'write' scopes:",
+        "the server saves what a run finds, so it refuses a key that cannot write.",
+        "Findings carry char-offset textPosition into the",
         "chapter's plain text; layer-2 proofreading findings also carry suggestedFix.",
-        "By default the findings are also SAVED to the book, which is what makes them",
-        "appear in the author's Guardian panel and count toward Story Health; pass",
-        "persist:false for a look that leaves no trace. Saving needs the 'write' scope,",
-        "and a run is never discarded because the save failed.",
+        "Every run's findings are SAVED to the book by the server, which is what makes them",
+        "appear in the author's Guardian panel and count toward Story Health; open notes on the",
+        "chapter that the detectors which ran no longer raise are closed in the same step.",
+        "There is currently no way to run without saving — `persist` is accepted but not",
+        "honoured. `saved` in the result reports whether the server wrote the rows, and a",
+        "run is never discarded because its save failed.",
     ].join(" "), {
         bookId: z.string().describe("Book ID"),
         chapterId: z.string().describe("Chapter ID to check"),
@@ -88,11 +92,12 @@ export function registerAITools(server) {
         persist: z
             .boolean()
             .optional()
-            .describe("Save the findings to the book so the author sees them in the Guardian panel. Default true."),
+            .describe("Currently not honoured: the server saves every run's findings to the book whatever this is set to, and `saved` in the result says so."),
     }, 
-    // Not read-only: the default path writes GuardianIssue rows. That default is
-    // deliberate — a check whose findings evaporate is the exact failure this
-    // tool shipped with for months, back when the persist route refused API keys.
+    // Not read-only: every run writes GuardianIssue rows, server-side. `persist`
+    // is still in the schema only so existing callers keep validating — the run
+    // route has no opt-out, so false has never meant anything. Whether it is
+    // removed here or given a meaning there is the owner's call, not this file's.
     { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async ({ bookId, chapterId, layers, costBudget, locale, persist }) => {
         try {
             const client = getClient();
@@ -121,9 +126,7 @@ export function registerAITools(server) {
                 // "manual" is what lifts the automatic-trigger detector filter.
                 trigger: "manual",
             });
-            const saved = persist === false
-                ? { persisted: false, reason: "persist:false was requested" }
-                : await persistIssues(client, bookId, chapterId, result.issues ?? []);
+            const saved = savedByRun(result, persist);
             return {
                 content: [
                     {
@@ -273,6 +276,47 @@ export function registerAITools(server) {
     });
 }
 /**
+ * What became of the run's findings in the book, read off the run response.
+ *
+ * The run route persists every run itself — in full, retiring only the notes
+ * of the detectors that ran. This tool used to follow it with a POST of the
+ * findings to the issues collection, and that second write was worse than
+ * redundant: its schema carries a narrow subset, so it blanked detector,
+ * evidence, description, lane and sources on the rows the run had just
+ * written; it named no detectors, so its reconcile was chapter-wide and a
+ * `local` check resolved every deep-run note on the chapter; and it is capped
+ * at 200 issues, so a bigger run resolved its own overflow. There is nothing
+ * left for this side to write — only a verdict to report.
+ *
+ * `count` is the number of issues the run returned, which is what the route
+ * hands to its persist step; the response carries no separate row count.
+ */
+function savedByRun(result, persist) {
+    if (result.code === NO_RUNNABLE_LAYERS) {
+        // The route answers before dispatching or persisting anything. "Saved, 0
+        // rows" next to an empty issue list would read as a clean chapter.
+        return {
+            persisted: false,
+            reason: `No requested layer could run on this book (${NO_RUNNABLE_LAYERS}) — typically layer 3 on a book with coherence analysis switched off. Nothing was checked and nothing was saved; this is not a clean result.`,
+        };
+    }
+    if (result.persisted === false) {
+        return {
+            persisted: false,
+            reason: `The run completed but the server could not save its findings (${result.code ?? "no code given"}): some or all of these issues are missing from the book. Run the check again to retry the save.`,
+        };
+    }
+    return {
+        persisted: true,
+        count: result.issues?.length ?? 0,
+        ...(persist === false
+            ? {
+                reason: "persist:false could not be honoured: the Guardian run route saves every run and has no opt-out, so these findings are in the book.",
+            }
+            : {}),
+    };
+}
+/**
  * Project the dispatcher's response down to what a caller can act on.
  *
  * `issues` is the payload. The per-layer roll-up is not decoration: a
@@ -281,47 +325,6 @@ export function registerAITools(server) {
  * reporting "no issues" while hiding that would be a lie. Everything dropped
  * (per-detector wall-clock timings) is product-UI telemetry.
  */
-/**
- * Save a run's findings so they reach the author's Guardian panel.
- *
- * Never throws. The run has already happened and, on an api-heavy budget, has
- * already been billed — losing all of it because the key lacks `write`, or
- * because the caller is an org contributor who may read but not write the book,
- * would be the worst possible trade. The failure is reported alongside the
- * findings instead, which the caller still has in full.
- */
-async function persistIssues(client, bookId, chapterId, issues) {
-    if (!issues.length)
-        return { persisted: true, count: 0 };
-    const batch = issues.slice(0, MAX_PERSISTED_ISSUES);
-    try {
-        const result = await client.post(`/api/books/${bookId}/guardian/issues`, {
-            chapterId,
-            issues: batch.map((i) => ({
-                id: i.id,
-                fingerprint: i.fingerprint,
-                title: i.title,
-                severity: i.severity,
-                ...(i.category ? { category: i.category } : {}),
-                ...(i.confidence ? { confidence: i.confidence } : {}),
-                ...(i.chapterId ? { chapterId: i.chapterId } : {}),
-                ...(i.suggestedFix ? { suggestedFix: i.suggestedFix } : {}),
-                ...(i.textPosition ? { textPosition: i.textPosition } : {}),
-            })),
-        });
-        return {
-            persisted: true,
-            count: result.upsertedCount,
-            ...(issues.length > batch.length ? { capped: issues.length - batch.length } : {}),
-        };
-    }
-    catch (error) {
-        return {
-            persisted: false,
-            reason: error instanceof Error ? error.message : String(error),
-        };
-    }
-}
 function summarize(result) {
     return {
         issues: result.issues ?? [],

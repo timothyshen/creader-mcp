@@ -178,11 +178,6 @@ export interface PersistedGuardianIssue {
     createdAt: string;
     updatedAt: string;
 }
-export interface PersistResult {
-    upsertedCount: number;
-    autoResolvedCount: number;
-    persistedIds: string[];
-}
 export interface GuardianRunResponse {
     reports: GuardianLayerReport[];
     /** Flattened, deduplicated issues across every layer that ran. */
@@ -193,6 +188,13 @@ export interface GuardianRunResponse {
     usage: {
         totalTokens: number;
     };
+    /**
+     * Present, and `false`, only on a run whose issue rows failed to write —
+     * wholly or in part. The route persists every run itself; absence means it did.
+     */
+    persisted?: false;
+    /** Why a 200 is not an ordinary run. Absent on one that is. */
+    code?: "GUARDIAN_PERSIST_FAILED" | "GUARDIAN_NO_RUNNABLE_LAYERS" | (string & {});
 }
 export interface BookSearchResult {
     chapterId: string;
