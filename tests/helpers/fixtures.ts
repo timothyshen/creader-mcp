@@ -1,5 +1,8 @@
 import type {
   Act,
+  Article,
+  ArticleGuardianIssue,
+  ArticleNote,
   Book,
   Chapter,
   Character,
@@ -393,4 +396,48 @@ export const fxGuardianRun: GuardianRunResponse = {
   durationMs: 43,
   traceId: "run-abc-1234",
   usage: { totalTokens: 0 },
+}
+
+export const fxArticle: Article = {
+  id: "art_1",
+  title: "On Harbours",
+  content: "<p>The harbour was quiet.</p>",
+  wordCount: 4,
+  status: "active",
+  visibility: "PRIVATE",
+  allowSeoIndexing: false,
+  publishedAt: null,
+  slug: null,
+  ogImageUrl: null,
+  createdAt: "2026-10-01T00:00:00Z",
+  updatedAt: "2026-10-02T00:00:00Z",
+  userId: "user_1",
+  viewer: { role: "owner", canEdit: true },
+}
+
+export const fxArticleIssue: ArticleGuardianIssue = {
+  id: "gi_1",
+  articleId: "art_1",
+  fingerprint: "f1",
+  title: "Unsupported claim",
+  severity: "warning",
+  category: "argument",
+  description: "The second paragraph asserts a statistic with no source.",
+  suggestion: null,
+  suggestedFix: null,
+  detector: "l1.claim-consistency",
+  lane: "issue",
+  textPosition: { start: 4, end: 11 },
+  status: "OPEN",
+  createdAt: "2026-10-02T00:00:00Z",
+}
+
+export const fxArticleNote: ArticleNote = {
+  id: "note_a1",
+  title: "Port authority figures",
+  content: "Tonnage by year, 1990-2020.",
+  tags: ["sources"],
+  noteType: "research",
+  articleId: "art_1",
+  updatedAt: "2026-10-02T00:00:00Z",
 }

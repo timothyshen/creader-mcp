@@ -52,6 +52,16 @@ A book is organised volume → act → chapter → scene.
 - `get_quota` — AI token quota remaining
 - `set_visibility` — Publish or unpublish a book
 
+### Articles
+Standalone essays and posts owned by the writer, not by a book — the book tools do not apply to them.
+- `list_articles` / `get_article` — List articles; read one (returns the `baseContentHash` needed for content writes)
+- `create_article` / `update_article` — Create; change title, content or status (`archived`). Content writes are refused if the prose changed since your read
+- `delete_article` — Permanently delete an article with its notes and Guardian issues
+- `set_article_visibility` — Publish or unpublish an article — only when the user asks
+- `guardian_check_article` — Guardian on one article; its findings are always saved to the writer's Guardian panel
+- `list_article_guardian_issues` / `resolve_article_guardian_issue` — Manage those findings by issue id
+- `list_article_notes` / `create_article_note` — Notes kept beside an article
+
 ## Best Practices — What Goes Where
 
 Understanding where to store each type of content is critical for a good experience on Creader.
