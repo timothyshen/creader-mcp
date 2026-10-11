@@ -16,4 +16,25 @@
  * gets its own tool when it gets one rather than inheriting this name.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { GuardianIssue, GuardianRunResponse } from "../lib/types.js";
 export declare function registerAITools(server: McpServer): void;
+export declare function summarizeGuardianRun(result: GuardianRunResponse): {
+    durationMs: number;
+    traceId: string;
+    tokensSpent: number;
+    techniques?: unknown[] | undefined;
+    deferredLayers?: import("../lib/types.js").NarrativeLayer[] | undefined;
+    issues: GuardianIssue[];
+    layers: {
+        truncation?: {
+            analyzedChars: number;
+            totalChars: number;
+        } | undefined;
+        errors?: {
+            detectorId: string;
+            message: string;
+        }[] | undefined;
+        layer: import("../lib/types.js").NarrativeLayer;
+        issueCount: number;
+    }[];
+};

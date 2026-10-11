@@ -188,11 +188,75 @@ export interface GuardianRunResponse {
     /** Flattened, deduplicated issues across every layer that ran. */
     issues: GuardianIssue[];
     techniques?: unknown[];
+    /** Requested layers no report came back for — the content profile turned them off. */
+    deferredLayers?: NarrativeLayer[];
+    /** Present (false) only when the route saved the run itself and the save failed. */
+    persisted?: false;
+    code?: string;
     durationMs: number;
     traceId: string;
     usage: {
         totalTokens: number;
     };
+}
+export type Visibility = "PRIVATE" | "LINK_ONLY" | "PUBLIC";
+export interface Article {
+    id: string;
+    title: string;
+    /** Tiptap HTML. The list route sends it for every article. */
+    content: string;
+    wordCount: number;
+    status: "active" | "archived";
+    visibility: Visibility;
+    allowSeoIndexing?: boolean;
+    publishedAt: string | null;
+    slug: string | null;
+    ogImageUrl: string | null;
+    createdAt: string;
+    updatedAt: string;
+    userId: string;
+    /** Single-article GET only. A commenter can read the article but every write 404s. */
+    viewer?: {
+        role: "owner" | "commenter";
+        canEdit: boolean;
+    };
+}
+export interface ArticlePublishResult {
+    id: string;
+    title: string;
+    visibility: Visibility;
+    publishedAt: string | null;
+    slug: string | null;
+    ogImageUrl: string | null;
+}
+/** One row of /api/articles/:id/guardian/issues — addressed by `id`, not fingerprint. */
+export interface ArticleGuardianIssue {
+    id: string;
+    articleId: string;
+    fingerprint: string;
+    title: string;
+    severity: string;
+    category?: string | null;
+    description?: string | null;
+    suggestion?: string | null;
+    suggestedFix?: string | null;
+    detector?: string | null;
+    lane?: string | null;
+    textPosition?: {
+        start: number;
+        end: number;
+    } | null;
+    status: "OPEN" | "ACCEPTED" | "RESOLVED" | "DISMISSED";
+    createdAt: string;
+}
+export interface ArticleNote {
+    id: string;
+    title: string;
+    content: string;
+    tags: string[];
+    noteType: string;
+    articleId: string | null;
+    updatedAt: string;
 }
 export interface BookSearchResult {
     chapterId: string;
