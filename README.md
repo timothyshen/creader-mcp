@@ -274,7 +274,7 @@ refusal attached rather than being thrown away.
 |------|-------------|
 | `get_writing_stats` | Writing streak, daily/weekly word progress against goals, and total writing days |
 | `get_quota` | Check remaining AI token quota |
-| `set_visibility` | Set book visibility (PRIVATE, LINK_ONLY, PUBLIC) |
+| `set_visibility` | Publish or unpublish a book (PRIVATE, LINK_ONLY, PUBLIC). Every chapter — drafts included — is set to match, overwriting per-chapter visibility; volumes are clamped down on a downgrade. Needs an API key with the `publish` scope, which keys don't get by default |
 
 ## Best Practices — What Goes Where
 
