@@ -16,16 +16,21 @@
  * articles, but those routes accept a browser session only and refuse an API
  * key, so there is nothing for a tool to call.
  *
- * ## Why update_article checks for a conflict itself
+ * ## Why update_article guards a content write twice
  *
  * Same hazard as update_chapter: the editor, another tab and the offline replay
- * queue all write the same row. But the product guards chapter writes only —
- * the article PATCH is last-write-wins, and nothing the editor sends would let
- * it be otherwise. So the comparison the server makes for chapters is made
- * here: re-read the article immediately before writing and refuse if its prose
- * no longer matches the version the edit was based on. That shrinks the window
- * from "any time since you read it" to the instant between the re-read and the
- * write. It does not close it, and the tool description says so.
+ * queue all write the same row. The article PATCH now has the chapter PATCH's
+ * guard — send `baseContentHash` with `content` and the server compare-and-swaps
+ * the write, 409ing with ARTICLE_CONTENT_CONFLICT if the prose moved. Where that
+ * is deployed, it closes the race.
+ *
+ * A deployment that predates the guard strips the unknown field and writes
+ * last-write-wins, and the tool cannot tell which kind it is talking to. So it
+ * keeps the check it made before the guard existed: re-read the article
+ * immediately before writing and refuse if its prose no longer matches the
+ * version the edit was based on. Against an unguarded deployment that shrinks
+ * the window to the instant between the re-read and the write without closing
+ * it. The re-read can go once the guard is everywhere.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export declare function registerArticleTools(server: McpServer): void;

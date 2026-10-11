@@ -298,12 +298,17 @@ structure around it, so none of the book tools apply.
 
 #### Writing to an article
 
-Creader checks chapter writes for conflicts on the server but not article
-writes: the article PATCH is last-write-wins. So `update_article` makes the
-check itself. It re-reads the article just before writing and refuses if the
-prose no longer matches the version your `baseContentHash` describes. That
+`update_article` sends your `baseContentHash` with the new content, and a
+Creader deployment with the article guard compare-and-swaps the write the way
+it does a chapter's: if the prose changed since that read, the write is refused
+as a conflict and nothing is written. That closes the race.
+
+A deployment that predates the guard ignores the hash and writes
+last-write-wins, so `update_article` also makes the check itself: it re-reads
+the article just before writing and refuses if the prose no longer matches the
+version your `baseContentHash` describes. Against such a deployment that
 narrows the window to the moment between the re-read and the write, but cannot
-close it. A real guard has to come from the product.
+close it. The re-read stays until the guard is deployed everywhere.
 
 Comments, comment invitations and AI prose proposals also exist on articles,
 but their routes accept a browser session only, so the MCP server has no
