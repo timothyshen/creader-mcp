@@ -171,6 +171,19 @@ describe("article tools", () => {
       expect(result.content[0].text).toContain("archived")
     })
 
+    it("sends no baseContentHash with a title or status edit, even when a baseline is held", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxArticle)
+      await server.call("get_article", { articleId: "art_1" })
+
+      // With no content in the body the server's guard is not armed, and a
+      // hash riding along would only suggest that it was.
+      fetchMock.mockSuccess({ ...fxArticle, title: "Harbours", status: "archived" })
+      await server.call("update_article", { articleId: "art_1", title: "Harbours", status: "archived" })
+      expect(fetchMock.lastCall()!.method).toBe("PATCH")
+      expect(fetchMock.lastCall()!.body).toEqual({ title: "Harbours", status: "archived" })
+    })
+
     it("refuses a blind content write rather than last-write-wins over the editor", async () => {
       const server = await setup()
       const result = asToolResult(
@@ -181,7 +194,7 @@ describe("article tools", () => {
       expect(fetchMock.calls).toHaveLength(0)
     })
 
-    it("re-reads past a fresh cached copy before writing, then PATCHes the content", async () => {
+    it("re-reads past a fresh cached copy before writing, then PATCHes the content with its baseline", async () => {
       const server = await setup()
       fetchMock.mockSuccess(fxArticle)
       await server.call("get_article", { articleId: "art_1" })
@@ -194,8 +207,12 @@ describe("article tools", () => {
       )
       expect(result.isError).toBeUndefined()
       expect(fetchMock.calls.map(c => c.method)).toEqual(["GET", "GET", "PATCH"])
-      // The product's article PATCH has no guard field; nothing extra is sent.
-      expect(fetchMock.lastCall()!.body).toEqual({ content: "<p>Mine.</p>" })
+      // The hash of the prose the edit was based on, which arms the server's
+      // compare-and-swap.
+      expect(fetchMock.lastCall()!.body).toEqual({
+        content: "<p>Mine.</p>",
+        baseContentHash: contentHash(fxArticle.content),
+      })
     })
 
     it("refuses when the prose changed since the read, and writes nothing", async () => {
@@ -257,6 +274,10 @@ describe("article tools", () => {
       )
       expect(result.isError).toBeUndefined()
       expect(fetchMock.calls.map(c => c.method)).toEqual(["GET", "PATCH"])
+      expect(fetchMock.lastCall()!.body).toEqual({
+        content: "<p>Mine.</p>",
+        baseContentHash: contentHash(fxArticle.content),
+      })
     })
 
     it("re-baselines after a successful write so consecutive edits chain", async () => {
@@ -273,7 +294,67 @@ describe("article tools", () => {
         await server.call("update_article", { articleId: "art_1", content: "<p>Two.</p>" })
       )
       expect(second.isError).toBeUndefined()
-      expect(fetchMock.lastCall()!.body).toEqual({ content: "<p>Two.</p>" })
+      // Based on what the first write left on the server, not on the first read.
+      expect(fetchMock.lastCall()!.body).toEqual({
+        content: "<p>Two.</p>",
+        baseContentHash: contentHash("<p>One.</p>"),
+      })
+    })
+
+    describe("when the server's guard rejects the write", () => {
+      // get_article, then update_article's re-read — which passes — then a
+      // PATCH the server refuses: the prose moved in the instant between.
+      function racedWrite() {
+        fetchMock.mockSuccess(fxArticle).mockSuccess(fxArticle).mockHttpError(409, {
+          success: false,
+          error: {
+            code: "ARTICLE_CONTENT_CONFLICT",
+            message: "Article content changed since this draft was made",
+          },
+        })
+      }
+
+      it("reports a conflict, with nothing written and no retry", async () => {
+        const server = await setup()
+        racedWrite()
+        await server.call("get_article", { articleId: "art_1" })
+        const result = asToolResult(
+          await server.call("update_article", { articleId: "art_1", content: "<p>Mine.</p>" })
+        )
+        expect(result.isError).toBe(true)
+        expect(result.content[0].text).toContain("Conflict")
+        expect(result.content[0].text).toContain("no words were lost")
+        expect(result.content[0].text).toContain("Article content changed since this draft was made")
+        expect(fetchMock.calls.map(c => c.method)).toEqual(["GET", "GET", "PATCH"])
+      })
+
+      it("drops the stale baseline, so the next blind write is refused", async () => {
+        const server = await setup()
+        racedWrite()
+        await server.call("get_article", { articleId: "art_1" })
+        await server.call("update_article", { articleId: "art_1", content: "<p>Mine.</p>" })
+
+        const callsBefore = fetchMock.calls.length
+        const retry = asToolResult(
+          await server.call("update_article", { articleId: "art_1", content: "<p>Mine.</p>" })
+        )
+        expect(retry.isError).toBe(true)
+        expect(retry.content[0].text).toContain("without a baseContentHash")
+        expect(fetchMock.calls.length).toBe(callsBefore)
+      })
+
+      it("drops the copy the re-read cached, so get_article fetches the version to merge into", async () => {
+        const server = await setup()
+        racedWrite()
+        await server.call("get_article", { articleId: "art_1" })
+        await server.call("update_article", { articleId: "art_1", content: "<p>Mine.</p>" })
+
+        const theirs = { ...fxArticle, content: "<p>The editor typed this.</p>" }
+        fetchMock.mockSuccess(theirs)
+        const reread = asToolResult(await server.call("get_article", { articleId: "art_1" }))
+        expect(fetchMock.calls.map(c => c.method)).toEqual(["GET", "GET", "PATCH", "GET"])
+        expect(reread.content[0].text).toContain(`baseContentHash:${contentHash(theirs.content)}`)
+      })
     })
 
     it("names the write scope when the PATCH is refused as unauthorized", async () => {

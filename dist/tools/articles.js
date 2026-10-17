@@ -16,16 +16,21 @@
  * articles, but those routes accept a browser session only and refuse an API
  * key, so there is nothing for a tool to call.
  *
- * ## Why update_article checks for a conflict itself
+ * ## Why update_article guards a content write twice
  *
  * Same hazard as update_chapter: the editor, another tab and the offline replay
- * queue all write the same row. But the product guards chapter writes only —
- * the article PATCH is last-write-wins, and nothing the editor sends would let
- * it be otherwise. So the comparison the server makes for chapters is made
- * here: re-read the article immediately before writing and refuse if its prose
- * no longer matches the version the edit was based on. That shrinks the window
- * from "any time since you read it" to the instant between the re-read and the
- * write. It does not close it, and the tool description says so.
+ * queue all write the same row. The article PATCH now has the chapter PATCH's
+ * guard — send `baseContentHash` with `content` and the server compare-and-swaps
+ * the write, 409ing with ARTICLE_CONTENT_CONFLICT if the prose moved. Where that
+ * is deployed, it closes the race.
+ *
+ * A deployment that predates the guard strips the unknown field and writes
+ * last-write-wins, and the tool cannot tell which kind it is talking to. So it
+ * keeps the check it made before the guard existed: re-read the article
+ * immediately before writing and refuse if its prose no longer matches the
+ * version the edit was based on. Against an unguarded deployment that shrinks
+ * the window to the instant between the re-read and the write without closing
+ * it. The re-read can go once the guard is everywhere.
  */
 import { z } from "zod";
 import { getClient } from "../lib/api-client.js";
@@ -35,6 +40,8 @@ import { stripHtmlForPositions } from "../lib/html-text.js";
 import { summarizeGuardianRun } from "./ai.js";
 /** Server-side zod cap on both plainContent and htmlContent of a Guardian run. */
 const MAX_CONTENT_CHARS = 200_000;
+/** Server's code for "your edit diverged from prose that has since changed". */
+const ARTICLE_CONTENT_CONFLICT = "ARTICLE_CONTENT_CONFLICT";
 /**
  * articleId → fingerprint of the prose this process last saw on the server.
  * Written on every read/write that observes content; read by update_article.
@@ -55,6 +62,16 @@ function articleError(error, scope) {
         return toolError(new Error(`${error.message}. Article routes answer a key that lacks the '${scope}' scope exactly as they answer an invalid key, so check the key's scopes before replacing it.`));
     }
     return toolError(error);
+}
+/** One answer for a refused content write, whichever check caught it. */
+function conflictResult(articleId, serverSaid) {
+    return {
+        content: [{
+                type: "text",
+                text: `Conflict: article ${articleId} was changed by someone else (the editor, another device, or an offline replay) after the version you edited. Nothing was written and no words were lost. Call get_article to read the current text, merge your change into it, then update_article with the new baseContentHash.${serverSaid ? ` Server said: ${serverSaid}` : ""}`,
+            }],
+        isError: true,
+    };
 }
 function listLine(a) {
     const tags = [`${a.wordCount} words`];
@@ -133,10 +150,12 @@ export function registerArticleTools(server) {
         "without deleting it; 'active' brings it back). Writing content requires a",
         "baseContentHash — the one get_article returned for the version you edited. It is",
         "remembered automatically after get_article or create_article in this session; pass",
-        "it explicitly otherwise. Unlike chapters, Creader does not check article writes for",
-        "conflicts, so this tool does: it re-reads the article just before writing and",
-        "refuses if the prose changed since your version. An edit that lands in the instant",
-        "between that re-read and the write can still be overwritten. Owner only.",
+        "it explicitly otherwise. If someone else changed the prose since your version, the",
+        "write is rejected as a conflict rather than overwriting their words. Creader checks",
+        "this on the server where its article guard is deployed, which closes the race; until",
+        "it is everywhere, this tool also re-reads the article just before writing, and on a",
+        "deployment without the guard an edit that lands in the instant between that re-read",
+        "and the write can still be overwritten. Owner only.",
     ].join(" "), {
         articleId: z.string().describe("Article ID"),
         title: z.string().max(300).optional(),
@@ -156,25 +175,25 @@ export function registerArticleTools(server) {
             const client = getClient();
             const path = `/api/articles/${articleId}`;
             if (content !== undefined) {
-                // The server's half of update_chapter's guard, done client-side. A
-                // cached copy would be exactly the stale pre-image this exists to
-                // catch, so the read must reach the server.
+                // The server guard's comparison, made client-side for a deployment
+                // that lacks it. A cached copy would be exactly the stale pre-image
+                // this exists to catch, so the read must reach the server.
                 client.invalidate(path);
                 const current = (await client.get(path)).content || "";
                 if (current !== content && contentHash(current) !== base) {
                     // The baseline is provably stale. The fresh read stays cached: it
                     // is the version the caller has to merge into next.
                     baselines.delete(articleId);
-                    return {
-                        content: [{
-                                type: "text",
-                                text: `Conflict: article ${articleId} was changed by someone else (the editor, another device, or an offline replay) after the version you edited. Nothing was written and no words were lost. Call get_article to read the current text, merge your change into it, then update_article with the new baseContentHash.`,
-                            }],
-                        isError: true,
-                    };
+                    return conflictResult(articleId);
                 }
             }
-            const a = await client.patch(path, { title, content, status });
+            const a = await client.patch(path, {
+                title,
+                content,
+                status,
+                // Arms the server's compare-and-swap; an older deployment drops it.
+                ...(content !== undefined ? { baseContentHash: base } : {}),
+            });
             // Re-baseline so consecutive edits chain without another read.
             rememberBaseline(a);
             return {
@@ -185,6 +204,15 @@ export function registerArticleTools(server) {
             };
         }
         catch (error) {
+            if (error instanceof ApiRequestError &&
+                (error.status === 409 || error.code === ARTICLE_CONTENT_CONFLICT)) {
+                // The prose moved after the re-read passed. The baseline we held is
+                // provably stale, and so is the copy that re-read cached — drop both,
+                // or the caller re-reads the same dead pre-image and loops.
+                baselines.delete(articleId);
+                getClient().invalidate(`/api/articles/${articleId}`);
+                return conflictResult(articleId, error.message);
+            }
             return articleError(error, "write");
         }
     });
