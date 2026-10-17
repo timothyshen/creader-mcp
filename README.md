@@ -1,8 +1,9 @@
 # Creader MCP
 
-Creader, the continuity checker for novelists. This server lets an AI assistant check a manuscript against the author's world in Creader and return the issues. Checking is the default. Drafting tools are listed last and run only when the user asks for them.
+Creader helps you see your own thinking: it tracks what your writing commits to and shows where it contradicts itself. This server lets an AI assistant run Guardian, Creader's checker, on a manuscript and return the issues. Today the checks are built for fiction: characters, places, timeline, and lore. Checking is the default. Drafting tools are listed last and run only when the user asks for them.
 
 ## When an assistant should call it
+- The user wants a draft checked against what it has already established.
 - The user asks to check a chapter or manuscript for contradictions, plot holes, timeline errors, or character inconsistency.
 - The user asks what their world already says about a character, place, or event.
 
@@ -16,7 +17,7 @@ Creader, the continuity checker for novelists. This server lets an AI assistant 
 - extract_entity_candidates / triage_entity_candidate / triage_entity_fact: pull world facts out of the text; the author decides what to keep.
 
 ## What comes back
-guardian_check returns GuardianIssue items. Each has a textPosition; proofreading issues also carry a suggestedFix. Results are saved to the book by default; pass persist: false to leave no trace. costBudget defaults to local: rule checks only, no model calls, no tokens. Layer 3 and proofreading need a model budget.
+guardian_check returns GuardianIssue items. Each has a textPosition; proofreading issues also carry a suggestedFix. Results are saved to the book by default; pass persist: false to leave no trace. costBudget defaults to local: rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server. Layer 3 and proofreading need a model budget and use tokens.
 
 ## Architecture
 
@@ -263,8 +264,8 @@ refusal attached rather than being thrown away.
 
 `costBudget` is an inclusive ceiling on how expensive a detector may be:
 
-- `local` (default): rule checks only, no model calls, no tokens. Reaches only the rule-based detectors, so **layer 3 returns nothing** and layers 1/2/4/5 return only their local subset (cliche and repetition yes, proofreading and POV leak no). No `ai` scope needed.
-- `api-light` / `vector` / `api-heavy`: progressively deeper. `api-heavy` is the full pass; it spends the account's token quota and requires an API key minted with the `ai` scope.
+- `local` (default): rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server. Reaches only the rule-based detectors, so **layer 3 returns nothing** and layers 1/2/4/5 return only their local subset (cliche and repetition yes, proofreading and POV leak no). No `ai` scope needed.
+- `api-light` / `vector` / `api-heavy`: progressively deeper. `api-heavy` is the full pass; it uses the account's tokens and requires an API key minted with the `ai` scope.
 
 ### Stats & Publishing (3)
 

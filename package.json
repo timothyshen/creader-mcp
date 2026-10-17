@@ -2,7 +2,7 @@
   "name": "@creader/mcp-server",
   "version": "1.11.1",
   "mcpName": "io.creader/mcp-server",
-  "description": "Creader MCP: the continuity checker for novelists. Checks your manuscript against your world.",
+  "description": "Creader MCP: check a draft against what it already established. Fiction continuity first.",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.17.0",
@@ -39,7 +39,8 @@
     "node": ">=18"
   },
   "keywords": [
-    "novel",
+    "writing",
+    "writing-to-think",
     "continuity",
     "consistency",
     "fiction",
