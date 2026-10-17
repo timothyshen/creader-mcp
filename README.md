@@ -20,7 +20,7 @@ The result: AI-assisted writing that stays consistent across 100+ chapters and c
 ```
 ┌─────────────────┐     MCP (stdio)     ┌──────────────────┐     HTTPS     ┌─────────────┐
 │  Claude / GPT   │ ◄────────────────► │  creader-mcp     │ ◄──────────► │  Creader API │
-│  or any MCP     │     39 tools        │  (this server)   │   REST+JSON  │  creader.io  │
+│  or any MCP     │     79 tools        │  (this server)   │   REST+JSON  │  creader.io  │
 │  client         │                     │                  │              │              │
 └─────────────────┘                     │  - TTL cache     │              │  - Books     │
                                         │  - Error recovery│              │  - Chapters  │
@@ -72,7 +72,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (68)
+## Tools (79)
 
 ### Books (4)
 
@@ -110,6 +110,15 @@ the server appends.
 | `list_volumes` | List a book's volumes with chapter counts |
 | `list_acts` | List a book's acts and which volume each belongs to |
 | `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
+| `create_volume` | Create a volume — the top level of the spine, holding acts and chapters. Omit `orderIndex` to append at the end |
+| `update_volume` | Update a volume's fields. Only what you pass changes |
+| `delete_volume` | Delete a volume. **Also deletes** the chapters inside it and inside its acts, prose included, and those chapters' scenes — permanently, in one transaction. Counts what would die and refuses until you pass that exact number as `confirmChapterCount`; an empty volume needs no confirmation. Move the chapters elsewhere with `update_chapter` first to keep the prose |
+| `create_act` | Create an act. Acts are **named**, not titled. Pass `volumeId` to put it inside a volume; omit `orderIndex` to append |
+| `update_act` | Update an act's fields. Pass `volumeId: null` to detach it from its volume |
+| `delete_act` | Delete an act. **Also deletes** the chapters inside it, prose included, and those chapters' scenes — permanently, in one transaction. Counts what would die and refuses until you pass that exact number as `confirmChapterCount`; an empty act needs no confirmation. Move the chapters to another act with `update_chapter` first to keep the prose |
+| `create_scene` | Create a scene — a unit of plan inside a chapter and/or act. Link it with `chapterId` and `actId`; omit `orderIndex` to append |
+| `update_scene` | Update a scene's fields. Pass `null` to clear a link (`chapterId`, `actId`, `locationId`) |
+| `delete_scene` | Delete a scene. Permanent, but it takes nothing with it — a scene is a plan record and the chapter's prose is untouched |
 
 ### Entity review (5)
 
@@ -292,7 +301,45 @@ their panel.
 |------|-------------|
 | `get_writing_stats` | Writing streak, daily/weekly word progress against goals, and total writing days |
 | `get_quota` | Check remaining AI token quota |
-| `set_visibility` | Set book visibility (PRIVATE, LINK_ONLY, PUBLIC) |
+| `set_visibility` | Publish or unpublish a book (PRIVATE, LINK_ONLY, PUBLIC). Every chapter — drafts included — is set to match, overwriting per-chapter visibility; volumes are clamped down on a downgrade. Needs an API key with the `publish` scope, which keys don't get by default |
+
+### Articles (11)
+
+An article is a standalone piece — an essay, a blog post, a student draft —
+owned by the writer rather than by a book. No chapters, characters or
+structure around it, so none of the book tools apply.
+
+| Tool | Description |
+|------|-------------|
+| `list_articles` | List the writer's articles, newest edit first (no content). `status`: `active` (default), `archived` or `all` |
+| `get_article` | Read an article's full content, plus the `baseContentHash` to pass back when writing |
+| `create_article` | Create an article. It starts PRIVATE |
+| `update_article` | Change the title, content or status (`archived` puts it away without deleting it). Content writes need a `baseContentHash` and are refused if the prose changed since that read; see below |
+| `delete_article` | Permanently delete an article, with its notes, Guardian issues, comments and comment invitations. Needs the `delete` scope; owner only |
+| `set_article_visibility` | Publish (`PUBLIC` / `LINK_ONLY`) or unpublish (`PRIVATE`), optionally choosing the slug and search-engine consent. Also switches on the writer's public profile page. Needs the `publish` scope |
+| `guardian_check_article` | Run Guardian on an article. It reads the piece as an essay rather than fiction, so a requested layer with nothing to run is named in `deferredLayers`. **Always saves its findings**, so it needs the `write` scope; `api-heavy` also needs `ai` |
+| `list_article_guardian_issues` | List the issues open on an article; `includeAccepted` adds the ones the writer has accepted but not fixed yet |
+| `resolve_article_guardian_issue` | Close (`RESOLVED` / `DISMISSED`) or reopen an issue, addressed by its `id` |
+| `list_article_notes` | List the notes kept on an article |
+| `create_article_note` | Add a note to an article. `update_note` / `delete_note` take its id like any other note |
+
+#### Writing to an article
+
+`update_article` sends your `baseContentHash` with the new content, and a
+Creader deployment with the article guard compare-and-swaps the write the way
+it does a chapter's: if the prose changed since that read, the write is refused
+as a conflict and nothing is written. That closes the race.
+
+A deployment that predates the guard ignores the hash and writes
+last-write-wins, so `update_article` also makes the check itself: it re-reads
+the article just before writing and refuses if the prose no longer matches the
+version your `baseContentHash` describes. Against such a deployment that
+narrows the window to the moment between the re-read and the write, but cannot
+close it. The re-read stays until the guard is deployed everywhere.
+
+Comments, comment invitations and AI prose proposals also exist on articles,
+but their routes accept a browser session only, so the MCP server has no
+access to them.
 
 ## Best Practices — What Goes Where
 
@@ -312,6 +359,10 @@ Book
 │   ├── Events        ← Timeline entries — plot points, turning points, backstory
 │   └── Notes         ← Worldbuilding rules, research, agent-to-agent messages
 └── Relations         ← Connections between any two entities above
+
+Article               ← A standalone essay or post, owned by the writer — not part of any book
+├── Notes             ← Research and sources kept beside it (create_article_note)
+└── Guardian issues   ← Its own review queue (list_article_guardian_issues)
 ```
 
 ### Where to Put Your Content

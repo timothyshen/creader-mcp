@@ -172,7 +172,7 @@ export function registerAITools(server: McpServer) {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({ ...summarize(result), saved }, null, 2),
+              text: JSON.stringify({ ...summarizeGuardianRun(result), saved }, null, 2),
             },
           ],
         }
@@ -402,7 +402,7 @@ function savedByRun(
  * reporting "no issues" while hiding that would be a lie. Everything dropped
  * (per-detector wall-clock timings) is product-UI telemetry.
  */
-function summarize(result: GuardianRunResponse) {
+export function summarizeGuardianRun(result: GuardianRunResponse) {
   return {
     issues: result.issues ?? [],
     layers: (result.reports ?? []).map((r) => ({
@@ -411,6 +411,11 @@ function summarize(result: GuardianRunResponse) {
       ...(r.errors && r.errors.length ? { errors: r.errors } : {}),
       ...(r.truncation ? { truncation: r.truncation } : {}),
     })),
+    // A layer the content profile switched off is absent from `layers`, which
+    // reads as "ran clean" unless it is named.
+    ...(result.deferredLayers && result.deferredLayers.length
+      ? { deferredLayers: result.deferredLayers }
+      : {}),
     ...(result.techniques && result.techniques.length
       ? { techniques: result.techniques }
       : {}),

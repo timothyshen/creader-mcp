@@ -4,7 +4,7 @@
  * Creader MCP Server
  *
  * Exposes Creader's writing platform as MCP tools:
- * books, chapters, knowledge base, stats, and publishing.
+ * books, chapters, knowledge base, articles, stats, and publishing.
  *
  * Requires CREADER_API_KEY environment variable.
  * Optionally set CREADER_API_URL (defaults to https://creader.io).
@@ -24,9 +24,10 @@ import { registerAITools } from "./tools/ai.js"
 import { registerPlanTools } from "./tools/plan.js"
 import { registerStyleTools } from "./tools/style.js"
 import { registerEntityReviewTools } from "./tools/entities.js"
+import { registerArticleTools } from "./tools/articles.js"
 
 const server = new McpServer(
-  { name: "creader", version: "1.10.0" },
+  { name: "creader", version: "1.11.1" },
   {
     instructions: [
       "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
@@ -45,11 +46,13 @@ const server = new McpServer(
       "AI checks: guardian_check runs the 5-layer narrative Guardian on one chapter — pick layers (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure) and a costBudget; the default 'local' budget is free and makes no model calls, 'api-heavy' spends token quota; every budget needs the 'ai' and 'write' scopes. vector_check finds cross-book semantic conflicts in already-indexed content.",
       "Guardian findings persist: every guardian_check run is saved to the book by the server — there is no run that leaves the book untouched — so the author sees it in their Guardian panel and Story Health counts it. Call list_guardian_issues before re-running to see what is already open — including what the author flagged in the editor — and resolve_guardian_issue (addressed by fingerprint) to close one as RESOLVED once the prose is fixed, or DISMISSED if the note was wrong. Dismissal feeds detector confidence, so dismiss deliberately.",
       "AI writing aid (spends token quota, needs the 'ai' scope): orchestrate turns an intent into a structured generation plan to guide drafting.",
+      "Articles are the other kind of writing: standalone essays and posts owned by the writer, not by a book — no chapters, characters or structure, so the book tools do not apply to them. Read and write them like chapters: get_article returns a baseContentHash, update_article needs it and rejects the write as a conflict if the prose changed since that read — checked on the server where Creader's article guard is deployed, and by a re-read just before writing until it is everywhere; on a conflict, get_article again and merge.",
+      "guardian_check_article always saves its findings to the writer's Guardian panel; list_article_guardian_issues and resolve_article_guardian_issue manage them by issue id. set_article_visibility puts an article in front of the public — only when the writer asks.",
     ].join(" "),
   }
 )
 
-// Register all 68 tools
+// Register all 79 tools
 registerBookTools(server)
 registerChapterTools(server)
 registerStructureTools(server)
@@ -61,6 +64,7 @@ registerRelationTools(server)
 registerAITools(server)
 registerStatsTools(server)
 registerPublishingTools(server)
+registerArticleTools(server)
 
 // Start stdio transport
 const transport = new StdioServerTransport()

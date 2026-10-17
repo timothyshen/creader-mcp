@@ -16,4 +16,34 @@
  * gets its own tool when it gets one rather than inheriting this name.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { GuardianRunResponse } from "../lib/types.js";
 export declare function registerAITools(server: McpServer): void;
+/**
+ * Project the dispatcher's response down to what a caller can act on.
+ *
+ * `issues` is the payload. The per-layer roll-up is not decoration: a
+ * detector that errored, or a layer that only analysed a prefix of the
+ * chapter, means the coverage is narrower than the empty issue list implies —
+ * reporting "no issues" while hiding that would be a lie. Everything dropped
+ * (per-detector wall-clock timings) is product-UI telemetry.
+ */
+export declare function summarizeGuardianRun(result: GuardianRunResponse): {
+    durationMs: number;
+    traceId: string;
+    tokensSpent: number;
+    techniques?: unknown[] | undefined;
+    deferredLayers?: import("../lib/types.js").NarrativeLayer[] | undefined;
+    issues: import("../lib/types.js").GuardianIssue[];
+    layers: {
+        truncation?: {
+            analyzedChars: number;
+            totalChars: number;
+        } | undefined;
+        errors?: {
+            detectorId: string;
+            message: string;
+        }[] | undefined;
+        layer: import("../lib/types.js").NarrativeLayer;
+        issueCount: number;
+    }[];
+};
