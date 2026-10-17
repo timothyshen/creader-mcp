@@ -4,17 +4,39 @@ on:
   push:
     tags: ["v*"]
 
+# npm trusted publishing: id-token: write lets npm trade this job's GitHub OIDC
+# token for a publish token that lasts one publish, so there is no NPM_TOKEN to
+# leak, expire, or get caught by npm's restrictions on tokens that skip 2FA.
+# Naming any permission drops the rest, so contents: read is there for checkout.
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
+      # No dependency cache. This build goes out with a provenance attestation
+      # saying it came from this commit, and a cache restored from some other
+      # run is a way to put things in it that this commit never contained.
       - uses: actions/setup-node@v5
         with:
           node-version: lts/*
-          cache: pnpm
           registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1. An older npm does not fail with
+      # anything that mentions OIDC: it ignores the id-token, finds no npm token,
+      # and the publish dies with an auth error about a package that plainly exists.
+      - name: Make sure npm can do trusted publishing
+        run: |
+          NEED=11.5.1
+          HAVE="$(npm --version)"
+          if [ "$(printf '%s\n' "$NEED" "$HAVE" | sort -V | head -n1)" != "$NEED" ]; then
+            npm install -g npm@latest
+          fi
+          npm --version
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
@@ -29,10 +51,30 @@ jobs:
           [ "$TAG" = "$PKG" ] || { echo "tag v$TAG != package.json $PKG"; exit 1; }
           node scripts/check-metadata.mjs
 
+      # A version can reach npm without this workflow (1.11.1 was published by
+      # hand), and npm will not publish over it. Skip the npm step rather than
+      # fail, so the MCP Registry still hears about the release. If npm view
+      # fails for some other reason this reads as "not published", npm publish
+      # then refuses the duplicate, and the run goes red: the safe way to be wrong.
+      - name: Check whether this version is already on npm
+        id: npm
+        run: |
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "$(npm view "$NAME@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+            echo "$NAME@$VERSION is already on npm; skipping npm publish."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No token: npm finds the OIDC environment and authenticates as the
+      # trusted publisher configured on npmjs.com. Provenance is already the
+      # default there; --provenance makes a run that cannot produce one fail
+      # instead of quietly shipping without it.
       - name: Publish to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: steps.npm.outputs.published != 'true'
+        run: npm publish --access public --provenance
 
       - name: Install mcp-publisher
         run: curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher

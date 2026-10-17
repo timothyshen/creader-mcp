@@ -5,7 +5,6 @@ import {
   fxChapter,
   fxCharacter,
   fxGuardianRun,
-  fxPersist,
   fxPersistedIssue,
   fxLocation,
   fxPlan,
@@ -87,7 +86,6 @@ describe("AI tools", () => {
       fetchMock
         .mockSuccess({ ...fxChapter, content: "<p>He had a <em>heart of gold</em>.</p>" })
         .mockRaw(fxGuardianRun)
-        .mockSuccess(fxPersist)
 
       await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
 
@@ -108,14 +106,14 @@ describe("AI tools", () => {
 
     it("defaults to the local budget so a plain check spends no token quota", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
       await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       expect(fetchMock.calls[1].body).toMatchObject({ costBudget: "local" })
     })
 
     it("passes through an explicit layer selection and budget", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
       await server.call("guardian_check", {
         bookId: "book_1",
         chapterId: "chap_1",
@@ -132,14 +130,14 @@ describe("AI tools", () => {
 
     it("omits layers entirely when none are given, so the server runs all five", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
       await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       expect(fetchMock.calls[1].body).not.toHaveProperty("layers")
     })
 
     it("surfaces detector errors and truncation, not just the issue list", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
       const result = asToolResult(
         await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       )
@@ -164,34 +162,31 @@ describe("AI tools", () => {
       expect(result.content[0].text).toContain("no content")
     })
 
-    it("saves the findings so the author's Guardian panel sees them", async () => {
+    it("lets the run do the saving, and never writes the findings a second time", async () => {
       const server = await setup()
-      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun).mockSuccess(fxPersist)
+      fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
 
       const result = asToolResult(
         await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       )
 
-      // Third call, after the chapter read and the run itself.
-      const save = fetchMock.calls[2]
-      expect(save.method).toBe("POST")
-      expect(save.url).toBe("https://test.creader.local/api/books/book_1/guardian/issues")
-      const body = save.body as { chapterId: string; issues: Array<Record<string, unknown>> }
-      expect(body.chapterId).toBe("chap_1")
-      // Only the subset the persist route's schema accepts, and the fingerprint
-      // above all — it is the key a re-run upserts on.
-      expect(body.issues[0]).toMatchObject({
-        fingerprint: fxGuardianRun.issues[0].fingerprint,
-        title: fxGuardianRun.issues[0].title,
-        severity: fxGuardianRun.issues[0].severity,
-      })
-      expect(JSON.parse(result.content[0].text).saved).toMatchObject({
+      // The run route persists what it finds, in full, and retires only the
+      // notes of the detectors that ran. A second POST of the narrow subset
+      // blanked detector/evidence/description on those rows, resolved every
+      // deep-run note a `local` check never looked for, and — capped at 200 —
+      // resolved the run's own overflow. So: the chapter read, the run, nothing else.
+      expect(fetchMock.calls).toHaveLength(2)
+      expect(fetchMock.calls.map((c) => c.url)).not.toContain(
+        "https://test.creader.local/api/books/book_1/guardian/issues"
+      )
+      // A run response that carries no `persisted: false` is one whose rows were written.
+      expect(JSON.parse(result.content[0].text).saved).toEqual({
         persisted: true,
         count: 1,
       })
     })
 
-    it("leaves no trace when persist:false", async () => {
+    it("does not claim a traceless run for persist:false — the run route saves regardless", async () => {
       const server = await setup()
       fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
       const result = asToolResult(
@@ -201,29 +196,83 @@ describe("AI tools", () => {
           persist: false,
         })
       )
-      expect(fetchMock.calls).toHaveLength(2)
-      expect(JSON.parse(result.content[0].text).saved.persisted).toBe(false)
+      // This test used to be called "leaves no trace when persist:false" and
+      // proved only that no second request was sent. The run route has no
+      // opt-out: it wrote the rows before the tool ever looked at `persist`.
+      // Reporting persisted:false here told the caller the book was untouched
+      // when the author's panel had just changed.
+      const { saved } = JSON.parse(result.content[0].text)
+      expect(saved.persisted).toBe(true)
+      expect(saved.count).toBe(1)
+      expect(saved.reason).toContain("persist:false")
     })
 
-    it("keeps the findings when the save is refused", async () => {
+    it("keeps the findings when the server reports its own save failed", async () => {
       const server = await setup()
-      fetchMock
-        .mockSuccess(fxChapter)
-        .mockRaw(fxGuardianRun)
-        .mockHttpError(403, { error: "This API key lacks the 'write' scope." })
+      fetchMock.mockSuccess(fxChapter).mockRaw({
+        ...fxGuardianRun,
+        persisted: false,
+        code: "GUARDIAN_PERSIST_FAILED",
+      })
 
       const result = asToolResult(
         await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       )
 
-      // The expensive half already happened and, on api-heavy, was already
-      // billed. Throwing it away because the save failed is the worst trade
-      // available, so the run is returned with the failure attached.
+      // The run happened and, on api-heavy, was already billed; the server
+      // answers 200 with the flag rather than failing the request. The findings
+      // come back in full with the failure attached — and it must be attached:
+      // the author's panel does not have these rows, and list_guardian_issues
+      // will not show them.
       expect(result.isError).toBeUndefined()
       const parsed = JSON.parse(result.content[0].text)
       expect(parsed.issues).toHaveLength(1)
       expect(parsed.saved.persisted).toBe(false)
-      expect(parsed.saved.reason).toContain("'write' scope")
+      expect(parsed.saved).not.toHaveProperty("count")
+      expect(parsed.saved.reason).toContain("GUARDIAN_PERSIST_FAILED")
+    })
+
+    it("does not report a save for a run that dispatched no layer", async () => {
+      const server = await setup()
+      // What the route answers when every requested layer is filtered away —
+      // e.g. layers:[3] on a book whose owner switched coherence analysis off.
+      // It returns before persisting, so nothing was written or reconciled.
+      fetchMock.mockSuccess(fxChapter).mockRaw({
+        reports: [],
+        issues: [],
+        techniques: [],
+        deferredLayers: [3],
+        durationMs: 0,
+        traceId: "run-abc-5678",
+        usage: { totalTokens: 0 },
+        code: "GUARDIAN_NO_RUNNABLE_LAYERS",
+      })
+
+      const result = asToolResult(
+        await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1", layers: [3] })
+      )
+
+      // An empty issue list with "saved, 0 rows" reads as a clean chapter.
+      // Nothing was checked; say so.
+      const { saved } = JSON.parse(result.content[0].text)
+      expect(saved.persisted).toBe(false)
+      expect(saved.reason).toContain("GUARDIAN_NO_RUNNABLE_LAYERS")
+    })
+
+    it("describes the run route as it is: always saved, and 'ai' + 'write' on every budget", async () => {
+      const server = await setup()
+      const { description, schema } = server.tools.get("guardian_check")!
+      const persistHelp = (schema as { persist: { description?: string } }).persist.description
+      // Two claims the description made that the route never backed. The run
+      // route has no opt-out, so no call "leaves no trace"; and its auth gate
+      // demands both scopes before the budget is even read, so 'local' is free
+      // of quota but not of the 'ai' scope.
+      for (const text of [description, persistHelp]) {
+        expect(text).not.toMatch(/no trace/i)
+      }
+      expect(persistHelp).toMatch(/not honoured/i)
+      expect(description).toContain("'ai' and 'write' scopes")
+      expect(description).not.toMatch(/Saving needs the 'write' scope/)
     })
 
     it("propagates dispatcher HTTP errors (e.g. a key without the ai scope)", async () => {

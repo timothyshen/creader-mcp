@@ -17,7 +17,7 @@ Creader helps you see your own thinking: it tracks what your writing commits to 
 - extract_entity_candidates / triage_entity_candidate / triage_entity_fact: pull world facts out of the text; the author decides what to keep.
 
 ## What comes back
-guardian_check returns GuardianIssue items. Each has a textPosition; proofreading issues also carry a suggestedFix. Results are saved to the book by default; pass persist: false to leave no trace. costBudget defaults to local: rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server. Layer 3 and proofreading need a model budget and use tokens.
+guardian_check returns GuardianIssue items. Each has a textPosition; proofreading issues also carry a suggestedFix. Every run is saved to the book, where the author sees it in the Guardian panel; there is no run that leaves no trace (persist is accepted but not honoured). costBudget defaults to local: rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server. Every budget, local included, needs an API key with the ai and write scopes. Layer 3 and proofreading need a model budget and use tokens.
 
 ## Architecture
 
@@ -114,6 +114,15 @@ the server appends.
 | `list_volumes` | List a book's volumes with chapter counts |
 | `list_acts` | List a book's acts and which volume each belongs to |
 | `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
+| `create_volume` | Create a volume — the top level of the spine, holding acts and chapters. Omit `orderIndex` to append at the end |
+| `update_volume` | Update a volume's fields. Only what you pass changes |
+| `delete_volume` | Delete a volume. **Also deletes** the chapters inside it and inside its acts, prose included, and those chapters' scenes — permanently, in one transaction. Counts what would die and refuses until you pass that exact number as `confirmChapterCount`; an empty volume needs no confirmation. Move the chapters elsewhere with `update_chapter` first to keep the prose |
+| `create_act` | Create an act. Acts are **named**, not titled. Pass `volumeId` to put it inside a volume; omit `orderIndex` to append |
+| `update_act` | Update an act's fields. Pass `volumeId: null` to detach it from its volume |
+| `delete_act` | Delete an act. **Also deletes** the chapters inside it, prose included, and those chapters' scenes — permanently, in one transaction. Counts what would die and refuses until you pass that exact number as `confirmChapterCount`; an empty act needs no confirmation. Move the chapters to another act with `update_chapter` first to keep the prose |
+| `create_scene` | Create a scene — a unit of plan inside a chapter and/or act. Link it with `chapterId` and `actId`; omit `orderIndex` to append |
+| `update_scene` | Update a scene's fields. Pass `null` to clear a link (`chapterId`, `actId`, `locationId`) |
+| `delete_scene` | Delete a scene. Permanent, but it takes nothing with it — a scene is a plan record and the chapter's prose is untouched |
 
 ### Entity review (5)
 
@@ -220,7 +229,7 @@ invent beats, and the MCP client is already a model. Write the beats, then call
 | Tool | Description |
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
-| `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation. **Saves its findings to the book by default** — pass `persist: false` for a look that leaves no trace |
+| `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation. **Every run is saved to the book by the server** — there is no run that leaves no trace (`persist` is accepted but not honoured). Needs the `ai` and `write` scopes on every budget |
 | `vector_check` | Cross-book semantic conflict detection via embeddings. Detects duplicates, character contradictions, timeline inconsistencies, and location mismatches. Operates on already-indexed content |
 | `list_guardian_issues` | List the issues currently OPEN on a book — the same notes the author sees in the Guardian panel, whoever created them. Optionally narrowed to one chapter |
 | `resolve_guardian_issue` | Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. Dismissal also feeds detector confidence |
@@ -241,18 +250,37 @@ updates) and will arrive as its own tool.
 
 #### Findings that stay found
 
-Until v1.5.0 a `guardian_check` was a private event: the dispatcher accepted an
-API key but every route that *stores* a `GuardianIssue` refused one, so an MCP
-client could run the full 5-layer pass and the author would open their Guardian
-panel to an empty list. Story Health, which counts exactly those stored rows,
-never moved either.
+Every `guardian_check` run is saved by the run route itself, and has been since
+2026-05-27: the findings land in the author's Guardian panel and count toward
+Story Health, and open notes on the chapter that the detectors which ran no
+longer raise are closed in the same step.
 
-Creader opened those routes to API keys on 2026-08-29 (`read` to list, `write`
-to save or transition). So a run now lands where the author works, and the two
-sides share one queue: `list_guardian_issues` shows what the author flagged in
-the editor, and an issue you resolve disappears from their panel. Persisting is
-best-effort — if the key lacks `write`, the findings still come back with the
-refusal attached rather than being thrown away.
+Up to and including v1.10.0 this server did not know that, and wrote the
+findings a second time through the issues collection. That write was worse
+than redundant. It carries only a narrow subset of each issue, so it blanked
+the detector, evidence, description, lane and sources the run had just stored;
+it names no detectors, so its clean-up was chapter-wide and a free `local`
+check resolved every deep-run note on the chapter; and it is capped at 200
+issues, so a bigger run resolved its own overflow. It is gone. The tool now
+makes two requests — the chapter read and the run — and `saved` in the result
+reports the server's own verdict: `persisted`, the `count` of issues the run
+saved, and a `reason` when there is something to explain.
+
+What follows from the route doing the saving:
+
+- **Scopes.** The route demands `ai` **and** `write` of an API key on every
+  budget, `local` included. A key missing either is refused before anything
+  runs, so nothing is billed and nothing comes back.
+- **A failed save is not a failed run.** If the server cannot write the rows
+  after the run, the findings still come back, with `saved.persisted: false`.
+- **No traceless run.** The route has no opt-out. `persist` is still accepted
+  so existing callers keep working, but `persist: false` is not honoured and
+  `saved` says so; it never was — it only skipped the second write.
+
+The issue routes opened to API keys on 2026-08-29 (`read` to list, `write` to
+transition), so the two sides share one queue: `list_guardian_issues` shows
+what the author flagged in the editor, and an issue you resolve disappears from
+their panel.
 
 | Layer | What it checks |
 |-------|----------------|
@@ -264,8 +292,8 @@ refusal attached rather than being thrown away.
 
 `costBudget` is an inclusive ceiling on how expensive a detector may be:
 
-- `local` (default): rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server. Reaches only the rule-based detectors, so **layer 3 returns nothing** and layers 1/2/4/5 return only their local subset (cliche and repetition yes, proofreading and POV leak no). No `ai` scope needed.
-- `api-light` / `vector` / `api-heavy`: progressively deeper. `api-heavy` is the full pass; it uses the account's tokens and requires an API key minted with the `ai` scope.
+- `local` (default): rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server and needs the same `ai` and `write` scopes as any other run. Reaches only the rule-based detectors, so **layer 3 returns nothing** and layers 1/2/4/5 return only their local subset (cliche and repetition yes, proofreading and POV leak no).
+- `api-light` / `vector` / `api-heavy`: progressively deeper. `api-heavy` is the full pass; it uses the account's tokens.
 
 ### Stats & Publishing (3)
 
