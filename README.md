@@ -263,8 +263,8 @@ refusal attached rather than being thrown away.
 
 `costBudget` is an inclusive ceiling on how expensive a detector may be:
 
-- `local` (default) — rule checks only, no model calls, no tokens. Reaches only the rule-based detectors, so **layer 3 returns nothing** and layers 1/2/4/5 return only their local subset (cliche and repetition yes, proofreading and POV leak no). No `ai` scope needed.
-- `api-light` / `vector` / `api-heavy` — progressively deeper. `api-heavy` is the full pass; it spends the account's token quota and requires an API key minted with the `ai` scope.
+- `local` (default): rule checks only, no model calls, no tokens. Reaches only the rule-based detectors, so **layer 3 returns nothing** and layers 1/2/4/5 return only their local subset (cliche and repetition yes, proofreading and POV leak no). No `ai` scope needed.
+- `api-light` / `vector` / `api-heavy`: progressively deeper. `api-heavy` is the full pass; it spends the account's token quota and requires an API key minted with the `ai` scope.
 
 ### Stats & Publishing (3)
 
