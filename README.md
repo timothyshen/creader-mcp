@@ -1,19 +1,22 @@
-# @creader/mcp-server
+# Creader MCP
 
-> **Turn any AI assistant into a co-author.** This MCP server connects [Creader](https://creader.io) — a writing platform with built-in knowledge management — to Claude, GPT, and any MCP-compatible client. AI agents can read your world, write chapters, track characters, and manage the semantic relationships between every entity in your story.
+Creader, the continuity checker for novelists. This server lets an AI assistant check a manuscript against the author's world in Creader and return the issues. Checking is the default. Drafting tools are listed last and run only when the user asks for them.
 
-## Why This Exists
+## When an assistant should call it
+- The user asks to check a chapter or manuscript for contradictions, plot holes, timeline errors, or character inconsistency.
+- The user asks what their world already says about a character, place, or event.
 
-Writers using AI assistants face a fundamental problem: **the AI has no memory of your story world.** Every conversation starts from zero. Character names get mixed up, plot threads are forgotten, locations contradict each other.
+## When not to
+- The user did not ask for prose. Do not call drafting tools on your own.
 
-Creader solves this with a structured knowledge base (characters, locations, events, notes, and semantic relations). This MCP server exposes that entire knowledge graph to AI agents — so they can:
+## Checking tools
+- guardian_check: check one chapter across five layers (consistency, style, analysis, chapter suspense, plot structure).
+- vector_check: check characters, timeline, and locations across books.
+- list_guardian_issues / resolve_guardian_issue: the same issue list the author sees in the editor.
+- extract_entity_candidates / triage_entity_candidate / triage_entity_fact: pull world facts out of the text; the author decides what to keep.
 
-- **Read** your full story context in one call before writing
-- **Create and manage** characters, locations, timeline events, and notes
-- **Build a semantic knowledge graph** — define relationships like "allies_with", "located_in", "caused_by" between any entities
-- **Write chapters** that are grounded in your actual world, not hallucinated
-
-The result: AI-assisted writing that stays consistent across 100+ chapters and complex story worlds.
+## What comes back
+guardian_check returns GuardianIssue items. Each has a textPosition; proofreading issues also carry a suggestedFix. Results are saved to the book by default; pass persist: false to leave no trace. costBudget defaults to local: rule checks only, no model calls, no tokens. Layer 3 and proofreading need a model budget.
 
 ## Architecture
 
@@ -260,13 +263,8 @@ refusal attached rather than being thrown away.
 
 `costBudget` is an inclusive ceiling on how expensive a detector may be:
 
-- `local` (default) — no model calls, no token quota, no `ai` scope needed.
-  Reaches only the rule-based detectors, so **layer 3 returns nothing** and
-  layers 1/2/4/5 return only their local subset (cliche and repetition yes,
-  proofreading and POV leak no).
-- `api-light` / `vector` / `api-heavy` — progressively deeper. `api-heavy` is
-  the full pass; it spends the account's token quota and requires an API key
-  minted with the `ai` scope.
+- `local` (default) — rule checks only, no model calls, no tokens. Reaches only the rule-based detectors, so **layer 3 returns nothing** and layers 1/2/4/5 return only their local subset (cliche and repetition yes, proofreading and POV leak no). No `ai` scope needed.
+- `api-light` / `vector` / `api-heavy` — progressively deeper. `api-heavy` is the full pass; it spends the account's token quota and requires an API key minted with the `ai` scope.
 
 ### Stats & Publishing (3)
 
@@ -418,7 +416,7 @@ Tool responses use concise text format (`- Character Name (protagonist) id:abc12
 
 ## Use Cases
 
-### Multi-Agent Collaborative Writing
+### Optional drafting tools (run only when the user asks)
 
 Agent A builds the world, Agent B writes chapters — both connected to the same Creader book:
 

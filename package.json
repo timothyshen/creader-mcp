@@ -2,7 +2,7 @@
   "name": "@creader/mcp-server",
   "version": "1.11.1",
   "mcpName": "io.creader/mcp-server",
-  "description": "MCP server for Creader — access your stories, knowledge base, and AI tools from any MCP client",
+  "description": "Creader MCP: the continuity checker for novelists. Checks your manuscript against your world.",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.17.0",
@@ -39,18 +39,14 @@
     "node": ">=18"
   },
   "keywords": [
-    "mcp",
-    "creader",
-    "writing",
-    "ai",
-    "knowledge-base",
-    "model-context-protocol",
     "novel",
+    "continuity",
+    "consistency",
     "fiction",
     "worldbuilding",
-    "storytelling",
-    "continuity",
-    "author-tools"
+    "mcp",
+    "manuscript",
+    "creader"
   ],
   "homepage": "https://creader.io",
   "bugs": {
