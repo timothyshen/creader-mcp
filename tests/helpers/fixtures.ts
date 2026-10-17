@@ -15,7 +15,6 @@ import type {
   StyleReference,
   PlanThread,
   PlotNode,
-  PersistResult,
   PersistedGuardianIssue,
   Location,
   TimelineEvent,
@@ -185,12 +184,6 @@ export const fxBookSearch: BookSearchResponse = {
       score: 1,
     },
   ],
-}
-
-export const fxPersist: PersistResult = {
-  upsertedCount: 1,
-  autoResolvedCount: 0,
-  persistedIds: ["gi_1"],
 }
 
 export const fxPersistedIssue: PersistedGuardianIssue = {

@@ -77,7 +77,7 @@ Triage when the writer asks or the prose plainly settles it, not to empty a queu
 
 ### AI
 - `generate_outline` — Generate a story outline from a premise
-- `guardian_check` — 5-layer narrative Guardian on one chapter (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure); the default `local` budget is free, `api-heavy` spends token quota. Findings are **saved to the book by default** so the author sees them in their Guardian panel; pass `persist: false` for a look that leaves no trace
+- `guardian_check` — 5-layer narrative Guardian on one chapter (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure); the default `local` budget is free, `api-heavy` spends token quota. Every run is saved to the book by the server (the author sees it in their Guardian panel) and needs the `ai` and `write` scopes
 - `list_guardian_issues` — Issues currently open on a book, the same ones the author sees in the Guardian panel (whoever created them); check it before spending quota on another pass
 - `resolve_guardian_issue` — Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. Dismissal feeds detector confidence, so dismiss deliberately
 - `vector_check` — Cross-book semantic conflict detection using embeddings (duplicates, character contradictions, timeline, location mismatch)
