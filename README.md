@@ -110,6 +110,15 @@ the server appends.
 | `list_volumes` | List a book's volumes with chapter counts |
 | `list_acts` | List a book's acts and which volume each belongs to |
 | `list_scenes` | List a book's scenes with their parent chapter/act, status, and synopsis |
+| `create_volume` | Create a volume — the top level of the spine, holding acts and chapters. Omit `orderIndex` to append at the end |
+| `update_volume` | Update a volume's fields. Only what you pass changes |
+| `delete_volume` | Delete a volume. **Also deletes** the chapters inside it and inside its acts, prose included, and those chapters' scenes — permanently, in one transaction. Counts what would die and refuses until you pass that exact number as `confirmChapterCount`; an empty volume needs no confirmation. Move the chapters elsewhere with `update_chapter` first to keep the prose |
+| `create_act` | Create an act. Acts are **named**, not titled. Pass `volumeId` to put it inside a volume; omit `orderIndex` to append |
+| `update_act` | Update an act's fields. Pass `volumeId: null` to detach it from its volume |
+| `delete_act` | Delete an act. **Also deletes** the chapters inside it, prose included, and those chapters' scenes — permanently, in one transaction. Counts what would die and refuses until you pass that exact number as `confirmChapterCount`; an empty act needs no confirmation. Move the chapters to another act with `update_chapter` first to keep the prose |
+| `create_scene` | Create a scene — a unit of plan inside a chapter and/or act. Link it with `chapterId` and `actId`; omit `orderIndex` to append |
+| `update_scene` | Update a scene's fields. Pass `null` to clear a link (`chapterId`, `actId`, `locationId`) |
+| `delete_scene` | Delete a scene. Permanent, but it takes nothing with it — a scene is a plan record and the chapter's prose is untouched |
 
 ### Entity review (5)
 
