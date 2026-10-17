@@ -27,7 +27,7 @@ import { registerEntityReviewTools } from "./tools/entities.js"
 import { registerArticleTools } from "./tools/articles.js"
 
 const server = new McpServer(
-  { name: "creader", version: "1.11.0" },
+  { name: "creader", version: "1.11.1" },
   {
     instructions: [
       "Use get_book_context to load full story context (book + chapters + characters + locations + events) in one call before writing or editing.",
