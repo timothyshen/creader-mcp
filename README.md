@@ -17,7 +17,7 @@ Creader helps you see your own thinking: it tracks what your writing commits to 
 - extract_entity_candidates / triage_entity_candidate / triage_entity_fact: pull world facts out of the text; the author decides what to keep.
 
 ## What comes back
-guardian_check returns GuardianIssue items. Each has a textPosition; proofreading issues also carry a suggestedFix. Every run is saved to the book, where the author sees it in the Guardian panel; there is no run that leaves no trace (persist is accepted but not honoured). costBudget defaults to local: rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server. Every budget, local included, needs an API key with the ai and write scopes. Layer 3 and proofreading need a model budget and use tokens.
+guardian_check returns GuardianIssue items. Each has a textPosition; proofreading issues also carry a suggestedFix. Every run is saved to the book, where the author sees it in the Guardian panel; there is no run that leaves no trace. costBudget defaults to local: rule checks only, no model calls, no tokens. "local" is the cost class name; the check runs on Creader's server. Every budget, local included, needs an API key with the ai and write scopes. Layer 3 and proofreading need a model budget and use tokens.
 
 ## Architecture
 
@@ -229,8 +229,8 @@ invent beats, and the MCP client is already a model. Write the beats, then call
 | Tool | Description |
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
-| `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation. **Every run is saved to the book by the server** — there is no run that leaves no trace (`persist` is accepted but not honoured). Needs the `ai` and `write` scopes on every budget |
-| `vector_check` | Cross-book semantic conflict detection via embeddings. Detects duplicates, character contradictions, timeline inconsistencies, and location mismatches. Operates on already-indexed content |
+| `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation. **Every run is saved to the book by the server** — there is no run that leaves no trace. Needs the `ai` and `write` scopes on every budget |
+| `vector_check` | Cross-book semantic conflict detection via embeddings. Detects near-duplicate content and timeline inconsistencies between events. Operates on already-indexed content |
 | `list_guardian_issues` | List the issues currently OPEN on a book — the same notes the author sees in the Guardian panel, whoever created them. Optionally narrowed to one chapter |
 | `resolve_guardian_issue` | Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. Dismissal also feeds detector confidence |
 | `orchestrate` | Turn a writing intent (plus optional outline and book context) into a structured generation plan: scene breakdown, consistency constraints, style directives, word target, creative prompt. Spends token quota; needs the `ai` scope |
@@ -273,9 +273,9 @@ What follows from the route doing the saving:
   runs, so nothing is billed and nothing comes back.
 - **A failed save is not a failed run.** If the server cannot write the rows
   after the run, the findings still come back, with `saved.persisted: false`.
-- **No traceless run.** The route has no opt-out. `persist` is still accepted
-  so existing callers keep working, but `persist: false` is not honoured and
-  `saved` says so; it never was — it only skipped the second write.
+- **No traceless run.** The route has no opt-out. The old `persist` flag never
+  turned saving off (it only skipped the second write) and has been removed;
+  a caller that still sends it is not rejected, the key is ignored.
 
 The issue routes opened to API keys on 2026-08-29 (`read` to list, `write` to
 transition), so the two sides share one queue: `list_guardian_issues` shows
