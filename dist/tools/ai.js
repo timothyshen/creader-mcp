@@ -71,9 +71,8 @@ export function registerAITools(server) {
         "Every run's findings are SAVED to the book by the server, which is what makes them",
         "appear in the author's Guardian panel and count toward Story Health; open notes on the",
         "chapter that the detectors which ran no longer raise are closed in the same step.",
-        "There is currently no way to run without saving — `persist` is accepted but not",
-        "honoured. `saved` in the result reports whether the server wrote the rows, and a",
-        "run is never discarded because its save failed.",
+        "There is no way to run without saving. `saved` in the result reports whether the",
+        "server wrote the rows, and a run is never discarded because its save failed.",
     ].join(" "), {
         bookId: z.string().describe("Book ID"),
         chapterId: z.string().describe("Chapter ID to check"),
@@ -89,16 +88,12 @@ export function registerAITools(server) {
             .enum(["en", "en-GB", "zh"])
             .optional()
             .describe("Language of the prose. Defaults to the account locale."),
-        persist: z
-            .boolean()
-            .optional()
-            .describe("Currently not honoured: the server saves every run's findings to the book whatever this is set to, and `saved` in the result says so."),
     }, 
-    // Not read-only: every run writes GuardianIssue rows, server-side. `persist`
-    // is still in the schema only so existing callers keep validating — the run
-    // route has no opt-out, so false has never meant anything. Whether it is
-    // removed here or given a meaning there is the owner's call, not this file's.
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async ({ bookId, chapterId, layers, costBudget, locale, persist }) => {
+    // Not read-only: every run writes GuardianIssue rows, server-side. The run
+    // route has no opt-out; the old `persist` flag never meant anything there and
+    // is gone. Unknown keys are stripped by the schema, so callers still sending
+    // it keep validating.
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async ({ bookId, chapterId, layers, costBudget, locale }) => {
         try {
             const client = getClient();
             // The dispatcher scores offsets into plain text, so it wants the prose
@@ -126,7 +121,7 @@ export function registerAITools(server) {
                 // "manual" is what lifts the automatic-trigger detector filter.
                 trigger: "manual",
             });
-            const saved = savedByRun(result, persist);
+            const saved = savedByRun(result);
             return {
                 content: [
                     {
@@ -140,21 +135,17 @@ export function registerAITools(server) {
             return toolError(error);
         }
     });
-    server.tool("vector_check", "Run vector-based conflict detection across a book. Finds semantic duplicates, character contradictions, timeline inconsistencies, and location mismatches using embeddings. Does not require chapter input — operates on already-indexed content.", {
+    server.tool("vector_check", "Run vector-based conflict detection across a book. Finds near-duplicate content and timeline inconsistencies between events using embeddings. Does not require chapter input — operates on already-indexed content.", {
         bookId: z.string().describe("Book ID"),
         changedSourceId: z
             .string()
             .optional()
             .describe("If provided, restrict check to content related to this source"),
-        sourceTypes: z
-            .array(z.string())
-            .optional()
-            .describe("Optional filter: e.g. ['character', 'location', 'chapter']"),
-    }, { readOnlyHint: true, openWorldHint: true }, async ({ bookId, changedSourceId, sourceTypes }) => {
+    }, { readOnlyHint: true, openWorldHint: true }, async ({ bookId, changedSourceId }) => {
         try {
             const client = getClient();
             // vector-check returns raw JSON (no ApiResponse envelope) — use postRaw.
-            const result = await client.postRaw(`/api/books/${bookId}/guardian/vector-check`, { changedSourceId, sourceTypes });
+            const result = await client.postRaw(`/api/books/${bookId}/guardian/vector-check`, { changedSourceId });
             return {
                 content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
             };
@@ -291,7 +282,7 @@ export function registerAITools(server) {
  * `count` is the number of issues the run returned, which is what the route
  * hands to its persist step; the response carries no separate row count.
  */
-function savedByRun(result, persist) {
+function savedByRun(result) {
     if (result.code === NO_RUNNABLE_LAYERS) {
         // The route answers before dispatching or persisting anything. "Saved, 0
         // rows" next to an empty issue list would read as a clean chapter.
@@ -309,11 +300,6 @@ function savedByRun(result, persist) {
     return {
         persisted: true,
         count: result.issues?.length ?? 0,
-        ...(persist === false
-            ? {
-                reason: "persist:false could not be honoured: the Guardian run route saves every run and has no opt-out, so these findings are in the book.",
-            }
-            : {}),
     };
 }
 /**

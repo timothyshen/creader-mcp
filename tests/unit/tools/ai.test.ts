@@ -186,25 +186,21 @@ describe("AI tools", () => {
       })
     })
 
-    it("does not claim a traceless run for persist:false — the run route saves regardless", async () => {
+    it("has no persist flag, and a caller still sending one is not rejected", async () => {
       const server = await setup()
+      const { schema } = server.tools.get("guardian_check")!
+      // The run route saves every run; `persist:false` never turned that off.
+      expect(schema).not.toHaveProperty("persist")
+      expect(
+        server.validate("guardian_check", { bookId: "book_1", chapterId: "chap_1", persist: false }).success
+      ).toBe(true)
+
       fetchMock.mockSuccess(fxChapter).mockRaw(fxGuardianRun)
       const result = asToolResult(
-        await server.call("guardian_check", {
-          bookId: "book_1",
-          chapterId: "chap_1",
-          persist: false,
-        })
+        await server.call("guardian_check", { bookId: "book_1", chapterId: "chap_1" })
       )
-      // This test used to be called "leaves no trace when persist:false" and
-      // proved only that no second request was sent. The run route has no
-      // opt-out: it wrote the rows before the tool ever looked at `persist`.
-      // Reporting persisted:false here told the caller the book was untouched
-      // when the author's panel had just changed.
-      const { saved } = JSON.parse(result.content[0].text)
-      expect(saved.persisted).toBe(true)
-      expect(saved.count).toBe(1)
-      expect(saved.reason).toContain("persist:false")
+      expect(JSON.parse(result.content[0].text).saved).toEqual({ persisted: true, count: 1 })
+      expect(fetchMock.lastCall()!.body).not.toHaveProperty("persist")
     })
 
     it("keeps the findings when the server reports its own save failed", async () => {
@@ -261,16 +257,13 @@ describe("AI tools", () => {
 
     it("describes the run route as it is: always saved, and 'ai' + 'write' on every budget", async () => {
       const server = await setup()
-      const { description, schema } = server.tools.get("guardian_check")!
-      const persistHelp = (schema as { persist: { description?: string } }).persist.description
+      const { description } = server.tools.get("guardian_check")!
       // Two claims the description made that the route never backed. The run
       // route has no opt-out, so no call "leaves no trace"; and its auth gate
       // demands both scopes before the budget is even read, so 'local' is free
       // of quota but not of the 'ai' scope.
-      for (const text of [description, persistHelp]) {
-        expect(text).not.toMatch(/no trace/i)
-      }
-      expect(persistHelp).toMatch(/not honoured/i)
+      expect(description).not.toMatch(/no trace/i)
+      expect(description).not.toMatch(/persist/)
       expect(description).toContain("'ai' and 'write' scopes")
       expect(description).not.toMatch(/Saving needs the 'write' scope/)
     })
@@ -297,6 +290,19 @@ describe("AI tools", () => {
       expect(fetchMock.lastCall()!.url).toBe(
         "https://test.creader.local/api/books/book_1/guardian/vector-check"
       )
+    })
+
+    it("sends only changedSourceId and no longer promises location mismatches", async () => {
+      const server = await setup()
+      const { description, schema } = server.tools.get("vector_check")!
+      // The route accepted sourceTypes but no checker read it, and the
+      // location-mismatch checker never compared descriptions; both are gone.
+      expect(schema).not.toHaveProperty("sourceTypes")
+      expect(description).not.toMatch(/location/i)
+
+      fetchMock.mockRaw(fxVectorCheck)
+      await server.call("vector_check", { bookId: "book_1", changedSourceId: "loc_1" })
+      expect(fetchMock.lastCall()!.body).toEqual({ changedSourceId: "loc_1" })
     })
 
     it("propagates HTTP errors as tool errors", async () => {
