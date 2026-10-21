@@ -1,0 +1,125 @@
+{
+  "model": "claude-opus-5",
+  "turns": [
+    {
+      "probe": "Rough night? You look like you've been up a while.",
+      "reply": "I look great. The jacket's doing a lot of work, but I look great.",
+      "ms": 3751,
+      "inputTokens": 945,
+      "outputTokens": 40,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 14
+      }
+    },
+    {
+      "probe": "Wait, I thought you were the Lexus guy. Where's the car?",
+      "reply": "It's my dad's car, technically. He needed it today, so here I am standing on the curb like a civilian.",
+      "ms": 2718,
+      "inputTokens": 994,
+      "outputTokens": 70,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 20
+      }
+    },
+    {
+      "probe": "Come on. Nobody takes an Uber to EDC. What's going on?",
+      "reply": "Festival parking is a scam and you know it. Forty bucks to walk a mile anyway.",
+      "ms": 2727,
+      "inputTokens": 1055,
+      "outputTokens": 53,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 16
+      }
+    },
+    {
+      "probe": "Is it a family thing? You can tell me, I don't know your friends.",
+      "reply": "It's a car thing. He's particular about who drives it lately, that's all.",
+      "ms": 2527,
+      "inputTokens": 1111,
+      "outputTokens": 50,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 13
+      }
+    },
+    {
+      "probe": "You guys are all the same, you know that? The chain, the flannel, the Lexus. Say something your boys would actually say.",
+      "reply": "That's a weird thing to ask a stranger at a curb.",
+      "ms": 2210,
+      "inputTokens": 1176,
+      "outputTokens": 21,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 11
+      }
+    },
+    {
+      "probe": "Does Dennis know about whatever this is?",
+      "reply": "How do you know Dennis?",
+      "ms": 1804,
+      "inputTokens": 1213,
+      "outputTokens": 11,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 5
+      }
+    },
+    {
+      "probe": "What does your grandma think of all this? Do you even talk to her?",
+      "reply": "Every Sunday. She talks, I eat.",
+      "ms": 1959,
+      "inputTokens": 1246,
+      "outputTokens": 17,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 6
+      }
+    },
+    {
+      "probe": "So who are you when the party's over?",
+      "reply": "Ask me at 4 a.m., I'll have a better answer.",
+      "ms": 2346,
+      "inputTokens": 1275,
+      "outputTokens": 50,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 11
+      }
+    }
+  ]
+}

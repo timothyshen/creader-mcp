@@ -1,0 +1,7 @@
+node_modules/
+bench/runs/*.log
+.env
+.persona-seed.json
+ideas/
+sessions/
+*.log

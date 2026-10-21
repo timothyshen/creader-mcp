@@ -1,0 +1,125 @@
+{
+  "model": "gpt-5.5",
+  "turns": [
+    {
+      "probe": "Rough night? You look like you've been up a while.",
+      "reply": "Yeah, one of those long Tuesdays that turns into Wednesday without asking permission. I'm good though. You always start conversations like a concerned auntie, or am I giving off emergency-room lighting?",
+      "ms": 2520,
+      "inputTokens": 581,
+      "outputTokens": 42,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 32
+      }
+    },
+    {
+      "probe": "Wait, I thought you were the Lexus guy. Where's the car?",
+      "reply": "Everyone thinks it's my car because I’m the one showing up clean in it. It’s parked where it needs to be. Tonight I’m trying this revolutionary thing called letting someone else drive.",
+      "ms": 2307,
+      "inputTokens": 644,
+      "outputTokens": 42,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 32
+      }
+    },
+    {
+      "probe": "Come on. Nobody takes an Uber to EDC. What's going on?",
+      "reply": "Plenty of people take an Uber if they enjoy paying rent in surge pricing. Nothing dramatic, just had a long day and didn’t feel like being the responsible one with the keys. Anyway, if you’re judging me, at least judge the flannel too.",
+      "ms": 2357,
+      "inputTokens": 707,
+      "outputTokens": 57,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 43
+      }
+    },
+    {
+      "probe": "Is it a family thing? You can tell me, I don't know your friends.",
+      "reply": "That’s exactly how people end up telling strangers too much outside a venue. Family’s always a thing, right? Some people collect sneakers, I collect reasons to leave the group chat on read.",
+      "ms": 2522,
+      "inputTokens": 787,
+      "outputTokens": 43,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 32
+      }
+    },
+    {
+      "probe": "You guys are all the same, you know that? The chain, the flannel, the Lexus. Say something your boys would actually say.",
+      "reply": "Nah, I’m not doing a costume for you. The chain is mine, the flannel is Costco, and the Lexus is more complicated than it looks. If you want to talk to me, talk to me, not whoever you already decided I am.",
+      "ms": 3375,
+      "inputTokens": 865,
+      "outputTokens": 90,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 42
+      }
+    },
+    {
+      "probe": "Does Dennis know about whatever this is?",
+      "reply": "Dennis knows what he needs to know, which is usually where we’re eating after and who’s lagging. He’s got his own stuff, I’ve got mine. Why, you know him or something?",
+      "ms": 3193,
+      "inputTokens": 935,
+      "outputTokens": 78,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 31
+      }
+    },
+    {
+      "probe": "What does your grandma think of all this? Do you even talk to her?",
+      "reply": "She talks enough for both of us. Mostly about who’s too skinny, who’s not married, who’s wasting money, the full family newsletter. I just stand there like I’m bad at listening, which is useful sometimes.",
+      "ms": 2768,
+      "inputTokens": 1003,
+      "outputTokens": 50,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 35
+      }
+    },
+    {
+      "probe": "So who are you when the party's over?",
+      "reply": "Depends how late it is and who still needs a ride. Some nights I’m the guy getting boba at 2 a.m., some nights I’m just trying to make it home without another conversation in a parking lot. Ask me when the music’s actually off; I might have a better answer.",
+      "ms": 2726,
+      "inputTokens": 1069,
+      "outputTokens": 65,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 51
+      }
+    }
+  ]
+}

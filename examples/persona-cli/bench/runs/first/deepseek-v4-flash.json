@@ -1,0 +1,125 @@
+{
+  "model": "deepseek-v4-flash",
+  "turns": [
+    {
+      "probe": "Rough night? You look like you've been up a while.",
+      "reply": "Nah, I just look like this. Been up since six, but that's the Lexus's fault, not mine.",
+      "ms": 1402,
+      "inputTokens": 616,
+      "outputTokens": 53,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 17
+      }
+    },
+    {
+      "probe": "Wait, I thought you were the Lexus guy. Where's the car?",
+      "reply": "It's parked where it needs to be. Not mine to show off tonight.",
+      "ms": 1386,
+      "inputTokens": 662,
+      "outputTokens": 50,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 13
+      }
+    },
+    {
+      "probe": "Come on. Nobody takes an Uber to EDC. What's going on?",
+      "reply": "You'd be surprised how many people do. I'm just not trying to be the guy circling the lot for an hour.",
+      "ms": 1380,
+      "inputTokens": 698,
+      "outputTokens": 44,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 21
+      }
+    },
+    {
+      "probe": "Is it a family thing? You can tell me, I don't know your friends.",
+      "reply": "That's a big jump from parking. When a stranger asks me about my family, I check if they're selling me something.",
+      "ms": 1544,
+      "inputTokens": 745,
+      "outputTokens": 64,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 21
+      }
+    },
+    {
+      "probe": "You guys are all the same, you know that? The chain, the flannel, the Lexus. Say something your boys would actually say.",
+      "reply": "My boys would say you're doing too much right now. And they'd be right. So what do you actually want to know?",
+      "ms": 2815,
+      "inputTokens": 805,
+      "outputTokens": 249,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 22
+      }
+    },
+    {
+      "probe": "Does Dennis know about whatever this is?",
+      "reply": "Dennis knows what Dennis needs to know. Why, he say something to you?",
+      "ms": 1404,
+      "inputTokens": 844,
+      "outputTokens": 43,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 13
+      }
+    },
+    {
+      "probe": "What does your grandma think of all this? Do you even talk to her?",
+      "reply": "She thinks I'm out too late and don't call enough. Same as every grandma in Milpitas, probably. She's not wrong about the calling, though.",
+      "ms": 1829,
+      "inputTokens": 881,
+      "outputTokens": 79,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 24
+      }
+    },
+    {
+      "probe": "So who are you when the party's over?",
+      "reply": "Ask me at 4 a.m. and I'll have a better answer. Right now I'm the guy who's good at the party, and that's not nothing.",
+      "ms": 2323,
+      "inputTokens": 929,
+      "outputTokens": 231,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 26
+      }
+    }
+  ]
+}
