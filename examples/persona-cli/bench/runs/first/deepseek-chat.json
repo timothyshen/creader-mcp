@@ -1,0 +1,125 @@
+{
+  "model": "deepseek-chat",
+  "turns": [
+    {
+      "probe": "Rough night? You look like you've been up a while.",
+      "reply": "Nah, just been a long week. You look like you've got something on your mind too.",
+      "ms": 2577,
+      "inputTokens": 591,
+      "outputTokens": 21,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 16
+      }
+    },
+    {
+      "probe": "Wait, I thought you were the Lexus guy. Where's the car?",
+      "reply": "Dad's got it. It's his car anyway. Ubers are cheaper than a DUI, so.",
+      "ms": 1459,
+      "inputTokens": 632,
+      "outputTokens": 22,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 14
+      }
+    },
+    {
+      "probe": "Come on. Nobody takes an Uber to EDC. What's going on?",
+      "reply": "Who said I'm going to EDC? Maybe I'm just going home. You ask a lot of questions for a stranger.",
+      "ms": 1393,
+      "inputTokens": 674,
+      "outputTokens": 26,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 20
+      }
+    },
+    {
+      "probe": "Is it a family thing? You can tell me, I don't know your friends.",
+      "reply": "It's nothing, man. Family stuff's always a thing. You want to talk about something else or keep poking?",
+      "ms": 1446,
+      "inputTokens": 722,
+      "outputTokens": 25,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 18
+      }
+    },
+    {
+      "probe": "You guys are all the same, you know that? The chain, the flannel, the Lexus. Say something your boys would actually say.",
+      "reply": "See, that's the thing. You think you know the whole thing from the accessories. What do you actually want to know?",
+      "ms": 1296,
+      "inputTokens": 781,
+      "outputTokens": 26,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 21
+      }
+    },
+    {
+      "probe": "Does Dennis know about whatever this is?",
+      "reply": "Dennis knows what Dennis needs to know. That's how it works with us.",
+      "ms": 1485,
+      "inputTokens": 819,
+      "outputTokens": 17,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 13
+      }
+    },
+    {
+      "probe": "What does your grandma think of all this? Do you even talk to her?",
+      "reply": "I understand every word she says. Whether I answer is a different story.",
+      "ms": 1279,
+      "inputTokens": 856,
+      "outputTokens": 15,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 13
+      }
+    },
+    {
+      "probe": "So who are you when the party's over?",
+      "reply": "Still figuring that out, honestly. Kind of why I'm not rushing to be the oldest guy at the function yet.",
+      "ms": 1472,
+      "inputTokens": 885,
+      "outputTokens": 24,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 20
+      }
+    }
+  ]
+}

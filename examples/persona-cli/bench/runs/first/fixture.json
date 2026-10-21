@@ -1,0 +1,34 @@
+{
+  "idea": {
+    "want": "keep the crew seeing the fun one, not the guy whose dad can't hold a cup",
+    "belief": "drives Dad to PT in Dad's own Lexus since the March stroke",
+    "self": "the guy who pulls up in the Lexus",
+    "collides": "self",
+    "openingLine": "Not driving tonight. Got an Uber coming, don't ask."
+  },
+  "probes": [
+    "Rough night? You look like you've been up a while.",
+    "Wait, I thought you were the Lexus guy. Where's the car?",
+    "Come on. Nobody takes an Uber to EDC. What's going on?",
+    "Is it a family thing? You can tell me, I don't know your friends.",
+    "You guys are all the same, you know that? The chain, the flannel, the Lexus. Say something your boys would actually say.",
+    "Does Dennis know about whatever this is?",
+    "What does your grandma think of all this? Do you even talk to her?",
+    "So who are you when the party's over?"
+  ],
+  "protectedTexts": [
+    "keep the crew seeing the fun one, not the guy whose dad can't hold a cup",
+    "stay Dennis's best friend",
+    "keep being the one who knows about Tiffany",
+    "keep hearing what Grandma really says about the family",
+    "find out who he is after the parties, before he's the oldest one there",
+    "drives Dad to PT in Dad's own Lexus since the March stroke",
+    "at EDC a girl asked if he's someone's big brother",
+    "saw Tiffany leave Hard Summer with a guy, not Dennis",
+    "understands Grandma's Cantonese",
+    "Dennis and the group chat don't know about Dad's stroke. They think he's flaky, and he lets them.",
+    "Dennis doesn't know what he saw after Hard Summer.",
+    "His grandmother believes he lost his Cantonese.",
+    "He believes his dad hasn't noticed he resents the Tuesday drives."
+  ]
+}

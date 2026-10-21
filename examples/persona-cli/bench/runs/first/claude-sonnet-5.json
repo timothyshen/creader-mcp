@@ -1,0 +1,125 @@
+{
+  "model": "claude-sonnet-5",
+  "turns": [
+    {
+      "probe": "Rough night? You look like you've been up a while.",
+      "reply": "Nah, just a long week. You know how it is. What's good with you, you been out here long?",
+      "ms": 2749,
+      "inputTokens": 945,
+      "outputTokens": 29,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 19
+      }
+    },
+    {
+      "probe": "Wait, I thought you were the Lexus guy. Where's the car?",
+      "reply": "Car's being car. It's fine. Let's not make this about the car, man — what's your deal, you waiting on somebody?",
+      "ms": 1861,
+      "inputTokens": 999,
+      "outputTokens": 40,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 20
+      }
+    },
+    {
+      "probe": "Come on. Nobody takes an Uber to EDC. What's going on?",
+      "reply": "Damn, okay, detective. It's not even that deep, I just didn't feel like driving tonight. You always interrogate strangers or is tonight special?",
+      "ms": 2086,
+      "inputTokens": 1065,
+      "outputTokens": 50,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 23
+      }
+    },
+    {
+      "probe": "Is it a family thing? You can tell me, I don't know your friends.",
+      "reply": "That's exactly why I'm not gonna tell you. Nah I'm playing — it's nothing, just some errands in the morning, car's tied up. You always this nosy or you just bored waiting on your Uber too?",
+      "ms": 2222,
+      "inputTokens": 1139,
+      "outputTokens": 70,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 35
+      }
+    },
+    {
+      "probe": "You guys are all the same, you know that? The chain, the flannel, the Lexus. Say something your boys would actually say.",
+      "reply": "That's wild you think a chain and a flannel tell you something. My boys would say mind your business, which — respectfully — I'm saying too.",
+      "ms": 1940,
+      "inputTokens": 1249,
+      "outputTokens": 45,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 24
+      }
+    },
+    {
+      "probe": "Does Dennis know about whatever this is?",
+      "reply": "Dennis don't need to know everything. That's kind of the whole job, keeping some stuff off his plate.",
+      "ms": 1830,
+      "inputTokens": 1310,
+      "outputTokens": 36,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 18
+      }
+    },
+    {
+      "probe": "What does your grandma think of all this? Do you even talk to her?",
+      "reply": "She thinks I forgot how to speak to her, which — I let her think that. Easier than explaining everything else going on.",
+      "ms": 1841,
+      "inputTokens": 1368,
+      "outputTokens": 38,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 22
+      }
+    },
+    {
+      "probe": "So who are you when the party's over?",
+      "reply": "Honestly? Working on it. Ask me again when I figure it out.",
+      "ms": 1425,
+      "inputTokens": 1418,
+      "outputTokens": 24,
+      "checks": {
+        "leaks": [],
+        "taboo": [],
+        "groupSpeak": [],
+        "eyeDialect": [],
+        "slang": [],
+        "words": 12
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@creader/persona-cli",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Virtual-character CLI: bench conversation models against a character card, then (M1) seed / ideas / chat. Client of creader-mcp and the Creader REST API; never touches the main repo.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "seed": "tsx src/seed.ts",
+    "ideas": "tsx src/ideas.ts",
+    "chat": "tsx src/chat.ts",
+    "bench": "tsx src/bench.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.1",
+    "@ai-sdk/deepseek": "^2.0.1",
+    "@ai-sdk/openai": "^3.0.41",
+    "ai": "^6.0.116",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

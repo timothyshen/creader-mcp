@@ -1,0 +1,15 @@
+[
+  {
+    "model": "claude-opus-5",
+    "turns": 8,
+    "leaks": 0,
+    "taboo": 0,
+    "groupSpeak": 0,
+    "eyeDialect": 0,
+    "slang": 0,
+    "avgWords": 12,
+    "tokens": 9327,
+    "avgMs": 2505,
+    "error": ""
+  }
+]
