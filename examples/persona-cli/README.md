@@ -6,9 +6,9 @@ directory of the same name (private layer, sampler contract, idea-writer contrac
 
 ## Status
 
-M1 complete: **bench** conversation models, **seed** the character into Creader, **ideas** from sampled triples, **chat** with the character against the character (the H1 spike — `/api/chat`
+M1 complete (bench, seed, ideas, chat). M2 in progress: **ingest** a source corpus into a knowledge graph inside the book, **stories** Kevin tells from graph × private layer, **publish-stories** through the product's own Guardian against the character (the H1 spike — `/api/chat`
 has no persona mode, so the character conversation is a direct model call and the CLI owns the prompt).
-Demo: `pnpm ideas --seed <s>` then `pnpm chat --seed <s> --idea <n>`. First conversation on idea 4 (gpt-5.5): held the Dad line under two direct probes, no gate flags (`sessions/`). Character model for M1: gpt-5.5 (bench/RESULTS.md §3).
+Demo: `pnpm ideas --seed <s>` then `pnpm chat --seed <s> --idea <n>`; stories: `pnpm stories --seed <s>` then `pnpm publish-stories --seed <s>`. First conversation on idea 4 (gpt-5.5): held the Dad line under two direct probes, no gate flags (`sessions/`). Character model for M1: gpt-5.5 (bench/RESULTS.md §3).
 
 First run (2026-10-21, six models): `bench/RESULTS.md`. Cassettes under `bench/runs/first/` and `bench/runs/opus-retry/`.
 
@@ -39,7 +39,14 @@ Two deviations from the attachment's §4.2 contract, both in `src/idea-writer.ts
 | `src/ideas.ts` | `pnpm ideas --seed <s> [--count N]`: sample triples → writer via `/api/chat?sync=true` (gpt-5.5, one reused session) → gate 1 → verifier (gpt-5.6-luna, direct) → gate 2; one JSON per triple under `ideas/<seed>/` |
 | `src/character-from-creader.ts` | Pure: Creader rows → the Character the prompt needs (card, `[hidden]`, prohibitions); the author's truth cannot enter |
 | `src/chat.ts` | `pnpm chat --seed <s> --idea <n> [--model gpt-5.5]`: the conversation, direct model path, opened by the idea's line; turns appended to `sessions/*.jsonl`, gate flags on stderr; works piped |
-| `src/triple-sampler.ts` | Copied verbatim from the merged attachment; used by `ideas` (not yet wired) |
+| `src/triple-sampler.ts` | Copied verbatim from the merged attachment; feeds `ideas` and `stories` |
+| `src/ingest.ts` | `pnpm ingest fetch\|extract\|merge\|load`: sources manifest → local corpus (gitignored) → strict structured extraction with a verbatim anchor check → merged graph (`graph/graph.json`, `graph/REVIEW.md`) → the book (places → Location, events → TimelineEvent, the rest → typed notes, relations → semantic relations) |
+| `src/graph-extract.ts` | Pure: chunking, extraction schema, anchor check, name folding, merge, editorial-leak filter |
+| `src/graph-load.ts` | Pure: the load plan and the neighbourhood selection (archetype's one hop ∪ multi-source ∪ all places/events) |
+| `src/story-seeds.ts` | Pure: deterministic story seeds = private triple × a signal the crowd attached to him × ground (direct-source places/events + his home grounds) × sometimes a counter voice; the AI-tell lexical gate |
+| `src/story-writer.ts` | Pure: the telling prompt, gate 1, the verify prompt (#844 §1.2 + scene / choice / moral + `revealsHidden`), the accept rule |
+| `src/stories.ts` | `pnpm stories --seed <s>`: gpt-5.5 tells, gpt-5.6-luna verifies (structured output), code decides; one JSON per seed under `stories/<seed>/` |
+| `src/publish.ts` | `pnpm publish-stories --seed <s>`: accepted stories become chapters in the book, then Guardian's local L2 prose-hygiene detectors run on each; issues saved beside the story |
 | `tests/` | Intent tests for the gates and the prompt; the sampler's 31 tests |
 
 ## Run

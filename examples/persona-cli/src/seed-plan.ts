@@ -38,7 +38,7 @@ export const CAST: readonly CharacterRow[] = [
   { name: "Dennis", description: "His best friend since high school. Runs the group chat.", role: "supporting" },
   { name: "Tiffany", description: "Dennis's girlfriend.", role: "supporting" },
   { name: "Dad", description: "His father. Had a stroke in March; physical therapy on Tuesdays.", role: "supporting" },
-  { name: "Grandma", description: "His grandmother. Speaks Cantonese at home.", role: "supporting" },
+  { name: "Grandma", description: "His grandmother. Speaks Vietnamese at home; lives off Bolsa Avenue in Little Saigon.", role: "supporting" },
 ]
 
 /** Registry ids from creader_editor lib/knowledge/relation-type-registry.ts. */

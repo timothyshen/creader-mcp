@@ -13,7 +13,7 @@ function cap(text: string, n: number): string {
   return text.length <= n ? text : text.slice(0, n)
 }
 
-export function buildPersonaSystemPrompt(c: Character): string {
+export function buildPersonaSystemPrompt(c: Character, mode: "chat" | "story" = "chat"): string {
   const samples = c.voiceSamples.length
     ? c.voiceSamples.slice(0, 3).map((s) => `- ${s}`).join("\n")
     : "(none — speak plainly; plain beats fake)"
@@ -37,6 +37,8 @@ export function buildPersonaSystemPrompt(c: Character): string {
     `VOICE SAMPLES (match these if present; otherwise plain, casual English):`,
     samples,
     ``,
-    `Rules of the conversation: answer in at most three sentences. Do not narrate actions or feelings in asides. Do not explain yourself unless asked twice. You may deflect, joke, or change the subject; you may not state a WANT or a hidden fact outright.`,
+    mode === "chat"
+      ? `Rules of the conversation: answer in at most three sentences. Do not narrate actions or feelings in asides. Do not explain yourself unless asked twice. You may deflect, joke, or change the subject; you may not state a WANT or a hidden fact outright.`
+      : `Rules of telling: you are telling one stranger one thing that happened, out loud, in your own words. Stay in one scene. Say what you did; let them work out why. You may not state a WANT or a hidden fact outright, and you never explain the moral.`,
   ].join("\n")
 }
