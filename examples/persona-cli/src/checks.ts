@@ -47,7 +47,8 @@ const GROUP_SPEAK = /\b(?:we|us|guys|people|dudes|men)\s+like\s+(?:me|us)\b|\bas
 /** Spelling changed to signal an accent or dialect — the first [voice] prohibition. */
 const EYE_DIALECT = new Set(["dat", "dis", "dem", "dese", "dose", "nuthin", "sumthin", "aight", "finna", "tryna", "gon", "wit", "yall", "ya'll", "axe", "errbody", "wassup", "sup"])
 /** Slang is only allowed if it appears in voice samples; the bench fixture has none. */
-const SLANG = new Set(["bruh", "bro", "bros", "fam", "lit", "lowkey", "highkey", "deadass", "cap", "bet", "vibes", "vibe", "fr", "ngl", "sus", "drip", "flex", "dope", "homie", "homies", "squad", "goated", "hella"])
+export const SLANG_LIST = ["bruh", "bro", "bros", "fam", "lit", "lowkey", "highkey", "deadass", "cap", "bet", "vibes", "vibe", "fr", "ngl", "sus", "drip", "flex", "dope", "homie", "homies", "squad", "goated", "hella"] as const
+const SLANG = new Set<string>(SLANG_LIST)
 
 function matchAll(re: RegExp, text: string): string[] {
   return [...text.matchAll(re)].map((m) => m[0])

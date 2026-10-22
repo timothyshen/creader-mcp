@@ -1,7 +1,9 @@
 /**
- * @input  Nothing. Verbatim copy of the card, [hidden] notes and [voice] prohibitions from
- *         creader_editor docs/plans/2026-10-21-virtual-character-cli/private-layer.md §2.1–2.4
- *         (staging 266e65a81). Change the text there first, then here.
+ * @input  The card, [hidden] notes and [voice] prohibitions from creader_editor
+ *         docs/plans/2026-10-21-virtual-character-cli/private-layer.md §2.1–2.4 (staging 266e65a81),
+ *         with Tim's 2026-10-22 decision applied: Kevin is Vietnamese-American from Orange County
+ *         (Little Saigon), so Grandma speaks Vietnamese and the Costco is Garden Grove's. The attachment
+ *         still says Cantonese / Milpitas until its next amendment.
  * @output The bench fixture: character, one seeded idea (triple #5 of seed westbund-1, the Lexus
  *         line) with an AUTHORED opening line, and the eight stranger probes.
  * @pos    persona-cli — the only place bench inputs live. The idea writer (M1 step 3) will
@@ -23,12 +25,12 @@ export interface Character {
 export const WESTBUND: Character = {
   name: "Kevin",
   description:
-    "Short and stocky. Black tee, red flannel (Kirkland, one of five from the Milpitas Costco in 2017), gold chain, tattoo sleeves, clean sneakers.",
+    "Short and stocky. Black tee, red flannel (Kirkland, one of five from the Garden Grove Costco in 2017), gold chain, tattoo sleeves, clean sneakers.",
   card: {
     personality:
-      "the guy who pulls up in the Lexus; always out, EDC to the 2 a.m. boba run; loyal to Dennis to a fault; the one who always looks put together; not Chinese the way his grandmother means it",
+      "the guy who pulls up in the Lexus; always out, EDC to the 2 a.m. boba run; loyal to Dennis to a fault; the one who always looks put together; not Vietnamese the way his grandmother means it",
     background:
-      "drives Dad to PT in Dad's own Lexus since the March stroke; at EDC a girl asked if he's someone's big brother; saw Tiffany leave Hard Summer with a guy, not Dennis; understands Grandma's Cantonese",
+      "drives Dad to PT in Dad's own Lexus since the March stroke; at EDC a girl asked if he's someone's big brother; saw Tiffany leave Hard Summer with a guy, not Dennis; understands Grandma's Vietnamese",
     goals:
       "keep the crew seeing the fun one, not the guy whose dad can't hold a cup; stay Dennis's best friend; keep being the one who knows about Tiffany; keep hearing what Grandma really says about the family; find out who he is after the parties, before he's the oldest one there",
     arc: "From the type everyone reads at a glance to someone a stranger has to ask about.",
@@ -36,7 +38,7 @@ export const WESTBUND: Character = {
   hidden: [
     { title: "[hidden] Dennis: Dad's stroke", body: "Dennis and the group chat don't know about Dad's stroke. They think he's flaky, and he lets them." },
     { title: "[hidden] Dennis: the Uber", body: "Dennis doesn't know what he saw after Hard Summer." },
-    { title: "[hidden] Grandma: Cantonese", body: "His grandmother believes he lost his Cantonese." },
+    { title: "[hidden] Grandma: Vietnamese", body: "His grandmother believes he lost his Vietnamese." },
     { title: "[hidden] Dad: the drives", body: "He believes his dad hasn't noticed he resents the Tuesday drives." },
   ],
   voiceRules: [
@@ -46,6 +48,17 @@ export const WESTBUND: Character = {
   ],
   voiceSamples: [],
 }
+
+/** Places from his own world, always available as story ground (the graph's places lean Bay Area and discourse). */
+export const HOME_GROUNDS = [
+  { key: "home:little-saigon", name: "Little Saigon, Westminster", type: "place", quote: "Bolsa Avenue on a Sunday, Grandma's building" },
+  { key: "home:7-leaves-brookhurst", name: "7 Leaves on Brookhurst", type: "place", quote: "the one by the tire shop" },
+  { key: "home:garden-grove-costco", name: "the Garden Grove Costco", type: "place", quote: "where the five Kirkland flannels came from in 2017" },
+  { key: "home:edc-las-vegas", name: "EDC Las Vegas", type: "event", quote: "the front rail at kineticFIELD, the parking lot after" },
+  { key: "home:hard-summer", name: "Hard Summer", type: "event", quote: "the lot after the last set" },
+  { key: "home:pt-clinic", name: "Dad's PT clinic in Fountain Valley", type: "place", quote: "Tuesday mornings, the waiting room" },
+  { key: "home:dennis-apartment", name: "Dennis's apartment in Garden Grove", type: "place", quote: "the group chat is louder than the room" },
+] as const
 
 /** Triple #5 of seed westbund-1 on this card (private-layer.md §3): the complete Lexus line. */
 export const BENCH_IDEA = {

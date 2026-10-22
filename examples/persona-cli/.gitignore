@@ -5,3 +5,9 @@ bench/runs/*.log
 ideas/
 sessions/
 *.log
+corpus/*.md
+corpus/status.json
+graph/extract/
+stories/
+graph/graph.json
+graph/REVIEW.md

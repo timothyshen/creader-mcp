@@ -48,7 +48,11 @@ export class CreaderRest {
     for (let attempt = 0; ; attempt++) {
       const res = await fetch(`${this.baseUrl}${path}`, init)
       const text = await res.text()
-      if (res.ok) return (JSON.parse(text) as Envelope<T>).data
+      if (res.ok) {
+        // Most routes answer `{ success, data }`; the Guardian run answers its result object bare.
+        const json = JSON.parse(text) as Envelope<T> | T
+        return typeof json === "object" && json !== null && "data" in json && "success" in json ? (json as Envelope<T>).data : (json as T)
+      }
       const transient = res.status === 429 || (res.status === 403 && text.includes('"challenge"'))
       const delay = delays[attempt]
       if (!transient || delay === undefined) throw new Error(`${method} ${path} → ${res.status}: ${text.slice(0, 300)}`)
