@@ -35,7 +35,7 @@
 import { z } from "zod";
 import { getClient } from "../lib/api-client.js";
 import { contentHash } from "../lib/content-hash.js";
-import { ApiRequestError, toolError } from "../lib/errors.js";
+import { ApiRequestError, UNAUTHORIZED_HINT, toolError } from "../lib/errors.js";
 import { stripHtmlForPositions } from "../lib/html-text.js";
 import { summarizeGuardianRun } from "./ai.js";
 /** Server-side zod cap on both plainContent and htmlContent of a Guardian run. */
@@ -59,7 +59,7 @@ function rememberBaseline(article) {
  */
 function articleError(error, scope) {
     if (error instanceof ApiRequestError && error.status === 401) {
-        return toolError(new Error(`${error.message}. Article routes answer a key that lacks the '${scope}' scope exactly as they answer an invalid key, so check the key's scopes before replacing it.`));
+        return toolError(new Error(`${error.message}. Article routes answer a key that lacks the '${scope}' scope exactly as they answer an invalid key, so check the key's scopes before replacing it. ${UNAUTHORIZED_HINT}`));
     }
     return toolError(error);
 }

@@ -25,8 +25,30 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * What a 401 from Creader can mean, for the model to relay. Since 2026-10-23
+ * API access (API keys and this MCP server) is a Creator-plan feature, and the
+ * server refuses keys whose owner is not on Creator with the same bare 401
+ * "Not authenticated" an invalid key gets. Without this, a writer whose plan
+ * changed sees "Error: Not authenticated" and replaces a key that was fine.
+ */
+export const UNAUTHORIZED_HINT =
+  "Creader did not accept this API key. Either the key is invalid or was deleted, " +
+  "or the account that owns it is not on the Creator plan (API access and the MCP " +
+  "server are part of Creator). Check the key and the plan in Creader under Settings > Developer."
+
+/** A 401 from the API, with the hint appended once. */
+export function withUnauthorizedHint(message: string): string {
+  return message.includes(UNAUTHORIZED_HINT) ? message : `${message}. ${UNAUTHORIZED_HINT}`
+}
+
 export function toolError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
+  const message =
+    error instanceof ApiRequestError && error.status === 401
+      ? withUnauthorizedHint(error.message)
+      : error instanceof Error
+        ? error.message
+        : String(error)
   return {
     content: [{ type: "text" as const, text: `Error: ${message}` }],
     isError: true,

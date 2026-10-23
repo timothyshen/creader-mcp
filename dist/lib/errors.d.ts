@@ -18,6 +18,16 @@ export declare class ApiRequestError extends Error {
     readonly code?: string | undefined;
     constructor(message: string, status: number, code?: string | undefined);
 }
+/**
+ * What a 401 from Creader can mean, for the model to relay. Since 2026-10-23
+ * API access (API keys and this MCP server) is a Creator-plan feature, and the
+ * server refuses keys whose owner is not on Creator with the same bare 401
+ * "Not authenticated" an invalid key gets. Without this, a writer whose plan
+ * changed sees "Error: Not authenticated" and replaces a key that was fine.
+ */
+export declare const UNAUTHORIZED_HINT: string;
+/** A 401 from the API, with the hint appended once. */
+export declare function withUnauthorizedHint(message: string): string;
 export declare function toolError(error: unknown): {
     content: {
         type: "text";
