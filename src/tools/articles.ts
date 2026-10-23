@@ -37,7 +37,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
 import { getClient } from "../lib/api-client.js"
 import { contentHash } from "../lib/content-hash.js"
-import { ApiRequestError, toolError } from "../lib/errors.js"
+import { ApiRequestError, UNAUTHORIZED_HINT, toolError } from "../lib/errors.js"
 import { stripHtmlForPositions } from "../lib/html-text.js"
 import { summarizeGuardianRun } from "./ai.js"
 import type {
@@ -75,7 +75,7 @@ function articleError(error: unknown, scope: "read" | "write" | "delete") {
   if (error instanceof ApiRequestError && error.status === 401) {
     return toolError(
       new Error(
-        `${error.message}. Article routes answer a key that lacks the '${scope}' scope exactly as they answer an invalid key, so check the key's scopes before replacing it.`
+        `${error.message}. Article routes answer a key that lacks the '${scope}' scope exactly as they answer an invalid key, so check the key's scopes before replacing it. ${UNAUTHORIZED_HINT}`
       )
     )
   }
