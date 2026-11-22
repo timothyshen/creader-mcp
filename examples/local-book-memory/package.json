@@ -1,0 +1,29 @@
+{
+  "name": "@creader/local-book-memory",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Spike: a book's memory kept in local files, with no model and no key in the server. The calling agent proposes facts with quotes; narrative-core's code stages check them; the writer triages. See docs/plans/2026-11-19-local-book-memory.md.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "creader-local-memory": "./bin/creader-local-memory.mjs"
+  },
+  "scripts": {
+    "serve": "tsx src/server.ts",
+    "sync:narrative-core": "scripts/sync-narrative-core.sh",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "tsx": "^4.19.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.5"
+  }
+}
