@@ -13,7 +13,7 @@
  * stopped existing. Entity discovery from prose lives on as
  * POST /api/books/:bookId/entity-candidates, which proposes *new* entities and
  * field updates into a review queue — a different contract, not a rename, so it
- * gets its own tool when it gets one rather than inheriting this name.
+ * has its own tools (entities.ts, since v1.10.0) rather than inheriting this name.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { GuardianRunResponse } from "../lib/types.js";

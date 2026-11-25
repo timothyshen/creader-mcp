@@ -13,7 +13,7 @@
  * stopped existing. Entity discovery from prose lives on as
  * POST /api/books/:bookId/entity-candidates, which proposes *new* entities and
  * field updates into a review queue — a different contract, not a rename, so it
- * gets its own tool when it gets one rather than inheriting this name.
+ * has its own tools (entities.ts, since v1.10.0) rather than inheriting this name.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
@@ -248,11 +248,11 @@ export function registerAITools(server: McpServer) {
     "resolve_guardian_issue",
     [
       "Close a Guardian issue, or reopen one. RESOLVED means the prose was fixed;",
-      "DISMISSED means the note was wrong, and also feeds detector confidence so the",
-      "same false positive is less likely next time — so dismiss deliberately, not to",
+      "DISMISSED means the note was wrong. A RESOLVED issue reopens if a later run finds",
+      "it again; a DISMISSED one stays dismissed — so dismiss deliberately, not to",
       "tidy up. Addressed by `fingerprint` (from list_guardian_issues or a",
       "guardian_check run), because that is the key that survives a re-run.",
-      "Only the issue's own author may transition it.",
+      "Needs write access to the book: its owner, or an owner or editor of its organization.",
     ].join(" "),
     {
       bookId: z.string().describe("Book ID"),

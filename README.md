@@ -12,7 +12,7 @@ Creader helps you see your own thinking: it tracks what your writing commits to 
 
 ## Checking tools
 - guardian_check: check one chapter across five layers (consistency, style, analysis, chapter suspense, plot structure).
-- vector_check: check characters, timeline, and locations across books.
+- vector_check: find near-duplicate content and timeline inconsistencies between events, across one book.
 - list_guardian_issues / resolve_guardian_issue: the same issue list the author sees in the editor.
 - extract_entity_candidates / triage_entity_candidate / triage_entity_fact: pull world facts out of the text; the author decides what to keep.
 
@@ -39,9 +39,9 @@ guardian_check returns GuardianIssue items. Each has a textPosition; proofreadin
 npx -y @creader/mcp-server
 ```
 
-Requires a `CREADER_API_KEY` environment variable. Create one at [creader.io](https://creader.io) under **Settings > API Keys** — the full tool set needs the `read`, `write` and `ai` scopes.
+Requires a `CREADER_API_KEY` environment variable. API keys are part of Creader's Creator plan: create one at [creader.io](https://creader.io) under **Settings > Developer**. A new key carries the `read`, `write` and `ai` scopes, which cover everything except publishing (`publish`) and the `delete_*` tools (`delete`); tick those two only if you want them.
 
-Published on [npm](https://www.npmjs.com/package/@creader/mcp-server) and in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.creader/mcp-server`.
+Published on [npm](https://www.npmjs.com/package/@creader/mcp-server).
 
 ## Configuration
 
@@ -130,7 +130,7 @@ Extraction proposes; the writer decides. Nothing reaches the world unreviewed.
 
 | Tool | Description |
 |------|-------------|
-| `extract_entity_candidates` | Read one chapter and fill **two** queues in one paid call: new entities, and facts about entities that already exist. Spends token quota (both legs); needs the `ai` scope. Reports when only part of a long chapter was examined |
+| `extract_entity_candidates` | Read one chapter and fill **two** queues in one paid call: new entities, and facts about entities that already exist. Spends token quota (both legs); needs the `ai` and `write` scopes. Reports when only part of a long chapter was examined |
 | `list_entity_candidates` | New entities awaiting the writer's decision. Free |
 | `triage_entity_candidate` | `ACCEPTED` confirms the draft record into a real entity; `DISMISSED` deletes it. Either way the name is never proposed again |
 | `list_entity_facts` | Proposed facts about existing entities, ordered by the chapter that established each. Free; `status` defaults to `PENDING` |
@@ -230,9 +230,9 @@ invent beats, and the MCP client is already a model. Write the beats, then call
 |------|-------------|
 | `generate_outline` | Generate a story outline with structured chapter suggestions from a premise |
 | `guardian_check` | Run the 5-layer narrative Guardian on one chapter. Choose `layers` and a `costBudget`; returns `GuardianIssue`s with char-offset `textPosition` (and `suggestedFix` on layer-2 proofreading), plus a per-layer roll-up of detector errors and truncation. **Every run is saved to the book by the server** — there is no run that leaves no trace. Needs the `ai` and `write` scopes on every budget |
-| `vector_check` | Cross-book semantic conflict detection via embeddings. Detects near-duplicate content and timeline inconsistencies between events. Operates on already-indexed content |
+| `vector_check` | Book-wide semantic conflict detection via embeddings. Detects near-duplicate content and timeline inconsistencies between events. Operates on already-indexed content |
 | `list_guardian_issues` | List the issues currently OPEN on a book — the same notes the author sees in the Guardian panel, whoever created them. Optionally narrowed to one chapter |
-| `resolve_guardian_issue` | Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. Dismissal also feeds detector confidence |
+| `resolve_guardian_issue` | Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. A dismissed issue stays dismissed when a later run finds it again; a resolved one reopens. Needs write access to the book |
 | `orchestrate` | Turn a writing intent (plus optional outline and book context) into a structured generation plan: scene breakdown, consistency constraints, style directives, word target, creative prompt. Spends token quota; needs the `ai` scope |
 
 #### Guardian layers and cost
@@ -246,7 +246,7 @@ caller since.
 fact-delta chain on 2026-08-27, so `/api/ai/extract-facts` no longer exists.
 Nothing replaces it under that name — entity discovery from prose is a
 different contract (a review queue of proposed *new* entities and field
-updates) and will arrive as its own tool.
+updates) and arrived in v1.10.0 as its own tools, under Entity review above.
 
 #### Findings that stay found
 
@@ -255,7 +255,7 @@ Every `guardian_check` run is saved by the run route itself, and has been since
 Story Health, and open notes on the chapter that the detectors which ran no
 longer raise are closed in the same step.
 
-Up to and including v1.10.0 this server did not know that, and wrote the
+Up to and including v1.11.1 this server did not know that, and wrote the
 findings a second time through the issues collection. That write was worse
 than redundant. It carries only a narrow subset of each issue, so it blanked
 the detector, evidence, description, lane and sources the run had just stored;
@@ -317,7 +317,7 @@ structure around it, so none of the book tools apply.
 | `update_article` | Change the title, content or status (`archived` puts it away without deleting it). Content writes need a `baseContentHash` and are refused if the prose changed since that read; see below |
 | `delete_article` | Permanently delete an article, with its notes, Guardian issues, comments and comment invitations. Needs the `delete` scope; owner only |
 | `set_article_visibility` | Publish (`PUBLIC` / `LINK_ONLY`) or unpublish (`PRIVATE`), optionally choosing the slug and search-engine consent. Also switches on the writer's public profile page. Needs the `publish` scope |
-| `guardian_check_article` | Run Guardian on an article. It reads the piece as an essay rather than fiction, so a requested layer with nothing to run is named in `deferredLayers`. **Always saves its findings**, so it needs the `write` scope; `api-heavy` also needs `ai` |
+| `guardian_check_article` | Run Guardian on an article. It reads the piece as an essay rather than fiction, so a requested layer with nothing to run is named in `deferredLayers`. **Every run is saved to the article by the server.** Needs the `ai` and `write` scopes on every budget |
 | `list_article_guardian_issues` | List the issues open on an article; `includeAccepted` adds the ones the writer has accepted but not fixed yet |
 | `resolve_article_guardian_issue` | Close (`RESOLVED` / `DISMISSED`) or reopen an issue, addressed by its `id` |
 | `list_article_notes` | List the notes kept on an article |

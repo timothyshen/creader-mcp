@@ -51,7 +51,7 @@ There is deliberately no `set_style`: the fingerprint is a measurement, and inve
 
 ### Entity review
 Extraction proposes; the writer decides. Nothing reaches the world unreviewed.
-- `extract_entity_candidates` — Read one chapter and fill two queues in one paid call: new entities, and facts about entities that already exist (spends token quota, needs the `ai` scope)
+- `extract_entity_candidates` — Read one chapter and fill two queues in one paid call: new entities, and facts about entities that already exist (spends token quota, needs the `ai` and `write` scopes)
 - `list_entity_candidates` — New entities awaiting the writer's decision (free)
 - `triage_entity_candidate` — `ACCEPTED` confirms the draft record into a real entity; `DISMISSED` deletes it. Either way the name is never proposed again
 - `list_entity_facts` — Proposed facts about existing entities, ordered by the chapter that established each (free; `status` defaults to `PENDING`)
@@ -79,8 +79,8 @@ Triage when the writer asks or the prose plainly settles it, not to empty a queu
 - `generate_outline` — Generate a story outline from a premise
 - `guardian_check` — 5-layer narrative Guardian on one chapter (1 Consistency, 2 Style & Prose, 3 Analysis, 4 Chapter & Suspense, 5 Plot Structure); the default `local` budget is free, `api-heavy` spends token quota. Every run is saved to the book by the server (the author sees it in their Guardian panel) and needs the `ai` and `write` scopes
 - `list_guardian_issues` — Issues currently open on a book, the same ones the author sees in the Guardian panel (whoever created them); check it before spending quota on another pass
-- `resolve_guardian_issue` — Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. Dismissal feeds detector confidence, so dismiss deliberately
-- `vector_check` — Cross-book semantic conflict detection using embeddings (near-duplicates, timeline inconsistencies)
+- `resolve_guardian_issue` — Close an issue (`RESOLVED` / `DISMISSED`) or reopen it, addressed by `fingerprint`. A dismissed issue stays dismissed when a later run finds it again, so dismiss deliberately
+- `vector_check` — Book-wide semantic conflict detection using embeddings (near-duplicates, timeline inconsistencies)
 - `orchestrate` — Turn a writing intent into a structured generation plan: scene breakdown, constraints, style directives, word target (spends token quota)
 
 ### Stats & Publishing

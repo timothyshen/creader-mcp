@@ -18,7 +18,7 @@
       "environmentVariables": [
         {
           "name": "CREADER_API_KEY",
-          "description": "Creader API key. Create one at https://creader.io under Settings > API Keys. Needs the read, write and ai scopes for the full tool set.",
+          "description": "Creader API key (Creator plan). Create one at https://creader.io under Settings > Developer. The default read, write and ai scopes cover everything except publishing (publish) and the delete_* tools (delete).",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
