@@ -2,6 +2,17 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { installFetchMock, type FetchMock } from "../../helpers/mock-fetch.js"
 import { FakeMcpServer, asToolResult } from "../../helpers/fake-mcp-server.js"
 import { fxCharacter, fxLocation, fxEvent, fxNote } from "../../helpers/fixtures.js"
+import type { Note } from "../../../src/lib/types.js"
+
+// One of each kind that matters to a filter, in the order the route sends them
+// (most recently updated first).
+const fxBookNotes: Note[] = [
+  { id: "note_p", bookId: "book_1", title: "No resurrection", content: "The dead stay dead.", noteType: "prohibition" },
+  { id: "note_g", bookId: "book_1", title: "Loose end", content: "", noteType: "general" },
+  { id: "note_r2", bookId: "book_1", title: "Tides", content: "Two a day.", noteType: "rule" },
+  { id: "note_w", bookId: "book_1", title: "The Guild", content: "Runs the harbour.", noteType: "worldbuilding" },
+  { id: "note_r1", bookId: "book_1", title: "Magic costs blood", content: "Always the caster's own.", noteType: "rule" },
+]
 
 async function setup() {
   vi.resetModules()
@@ -11,6 +22,18 @@ async function setup() {
   return server
 }
 
+/**
+ * Call a tool with its args put through the registered shape first, the way the
+ * SDK does. A key the shape does not declare is dropped on the way, so a plain
+ * call() would let a handler that spreads its args pass for a tool that cannot
+ * actually receive the field.
+ */
+async function callParsed(server: FakeMcpServer, name: string, args: Record<string, unknown>) {
+  const parsed = server.validate(name, args)
+  if (!parsed.success) throw parsed.error
+  return asToolResult(await server.call(name, parsed.data))
+}
+
 describe("knowledge tools", () => {
   let fetchMock: FetchMock
 
@@ -18,7 +41,7 @@ describe("knowledge tools", () => {
     fetchMock = installFetchMock()
   })
 
-  it("registers all 14 knowledge tools", async () => {
+  it("registers all 16 knowledge tools", async () => {
     const server = await setup()
     expect(server.names().sort()).toEqual([
       "create_character",
@@ -29,7 +52,9 @@ describe("knowledge tools", () => {
       "delete_event",
       "delete_location",
       "delete_note",
+      "get_character",
       "list_knowledge",
+      "list_notes",
       "search_knowledge",
       "update_character",
       "update_event",
@@ -69,7 +94,7 @@ describe("knowledge tools", () => {
 
     it("leaves the surviving knowledge tools unmarked", async () => {
       const server = await setup()
-      for (const name of ["search_knowledge", "list_knowledge"]) {
+      for (const name of ["search_knowledge", "list_knowledge", "list_notes", "get_character"]) {
         expect(server.tools.get(name)!.description).not.toContain("DEPRECATED")
       }
     })
@@ -190,6 +215,226 @@ describe("knowledge tools", () => {
     })
   })
 
+  describe("get_character", () => {
+    it("reads one character with the card list_knowledge leaves out", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess({
+        ...fxCharacter,
+        age: 34,
+        tags: ["family", "driver"],
+        customFields: { goals: "Keep the Lexus", nested: { a: [1, 2] }, coverImageUrl: "https://x/1.png" },
+      })
+      const result = asToolResult(await server.call("get_character", { id: "char_1" }))
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("GET")
+      expect(call.url).toBe("https://test.creader.local/api/characters/char_1")
+      expect(result.isError).toBeUndefined()
+      expect(result.content[0].text).toBe(
+        [
+          "# Alice",
+          "id:char_1 | protagonist | age 34 | tags: family, driver",
+          "",
+          "A curious heroine.",
+          "",
+          "customFields:",
+          "{",
+          '  "goals": "Keep the Lexus",',
+          '  "nested": {',
+          '    "a": [',
+          "      1,",
+          "      2",
+          "    ]",
+          "  },",
+          '  "coverImageUrl": "https://x/1.png"',
+          "}",
+        ].join("\n")
+      )
+    })
+
+    it("leaves out what the character does not have, and says the card is empty", async () => {
+      // The route answers null for a column that was never written or has been
+      // emptied, {} for one created without a card, and a 0 age is an age.
+      for (const customFields of [null, {}, []]) {
+        const server = await setup()
+        fetchMock.mockSuccess({ ...fxCharacter, description: "", age: null, tags: [], customFields })
+        const result = asToolResult(await server.call("get_character", { id: "char_1" }))
+        expect(result.content[0].text, JSON.stringify(customFields)).toBe(
+          "# Alice\nid:char_1 | protagonist\n\ncustomFields: none"
+        )
+      }
+      const server = await setup()
+      fetchMock.mockSuccess({ ...fxCharacter, description: "", age: 0, customFields: null })
+      const newborn = asToolResult(await server.call("get_character", { id: "char_1" }))
+      expect(newborn.content[0].text).toContain("| age 0")
+    })
+
+    it("prints chapter-aware storage whole, and says what update_character takes as the key", async () => {
+      const server = await setup()
+      const customFields = [
+        {
+          key: "status",
+          label: "Life status",
+          values: [
+            { value: "alive", source: "user" },
+            { value: "deceased", source: "ai", chapterId: "c9" },
+          ],
+        },
+      ]
+      fetchMock.mockSuccess({ ...fxCharacter, customFields })
+      const { text } = asToolResult(await server.call("get_character", { id: "char_1" })).content[0]
+      expect(text).toContain('update_character takes each entry\'s "key"')
+      expect(JSON.parse(text.slice(text.indexOf("\n[") + 1))).toEqual(customFields)
+    })
+
+    it("shows a card just written, not the one cached before the write", async () => {
+      const server = await setup()
+      fetchMock
+        .mockSuccess({ ...fxCharacter, customFields: { goals: "old", arc: "falls" } })
+        .mockSuccess(fxCharacter)
+        .mockSuccess({ ...fxCharacter, customFields: { goals: "new" } })
+      await server.call("get_character", { id: "char_1" })
+      await callParsed(server, "update_character", {
+        id: "char_1",
+        customFields: { goals: "new", arc: null },
+      })
+      const after = asToolResult(await server.call("get_character", { id: "char_1" }))
+      expect(fetchMock.calls.map(c => c.method)).toEqual(["GET", "PATCH", "GET"])
+      expect(after.content[0].text).toContain('"goals": "new"')
+      expect(after.content[0].text).not.toContain("falls")
+    })
+
+    it("is marked read-only", async () => {
+      const server = await setup()
+      expect(server.tools.get("get_character")!.annotations).toEqual({
+        readOnlyHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it("is where update_character sends you for the stored keys", async () => {
+      const server = await setup()
+      expect(server.tools.get("update_character")!.description).toContain("get_character")
+    })
+
+    it("returns tool error on API failure", async () => {
+      const server = await setup()
+      fetchMock.mockHttpError(404, {
+        success: false,
+        error: { code: "NOT_FOUND", message: "Character not found" },
+      })
+      const result = asToolResult(await server.call("get_character", { id: "nope" }))
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("Character not found")
+    })
+  })
+
+  describe("list_notes", () => {
+    it("lists every note with its id, type and full content", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxBookNotes)
+      const result = asToolResult(await server.call("list_notes", { bookId: "book_1" }))
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("GET")
+      expect(call.url).toBe("https://test.creader.local/api/books/book_1/notes")
+      expect(result.isError).toBeUndefined()
+      expect(result.content[0].text).toBe(
+        [
+          "- No resurrection (prohibition) id:note_p: The dead stay dead.",
+          "- Loose end (general) id:note_g",
+          "- Tides (rule) id:note_r2: Two a day.",
+          "- The Guild (worldbuilding) id:note_w: Runs the harbour.",
+          "- Magic costs blood (rule) id:note_r1: Always the caster's own.",
+        ].join("\n")
+      )
+    })
+
+    it("filters by noteType on this side — the route ignores a query string", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxBookNotes)
+      const result = asToolResult(
+        await server.call("list_notes", { bookId: "book_1", noteType: "rule" })
+      )
+      // The server returns all of the book's notes whatever is asked for, so a
+      // param on the URL would look like a filter and silently be none.
+      expect(fetchMock.lastCall()!.url).toBe("https://test.creader.local/api/books/book_1/notes")
+      expect(result.content[0].text).toBe(
+        [
+          "- Tides (rule) id:note_r2: Two a day.",
+          "- Magic costs blood (rule) id:note_r1: Always the caster's own.",
+        ].join("\n")
+      )
+    })
+
+    it("keeps the two kinds of world constraint apart", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxBookNotes)
+      const result = asToolResult(
+        await server.call("list_notes", { bookId: "book_1", noteType: "prohibition" })
+      )
+      expect(result.content[0].text).toBe(
+        "- No resurrection (prohibition) id:note_p: The dead stay dead."
+      )
+    })
+
+    it("serves a second filter from the same cached read, still unfiltered", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxBookNotes)
+      await server.call("list_notes", { bookId: "book_1", noteType: "rule" })
+      const all = asToolResult(await server.call("list_notes", { bookId: "book_1" }))
+      expect(fetchMock.calls).toHaveLength(1)
+      expect(all.content[0].text.split("\n")).toHaveLength(fxBookNotes.length)
+    })
+
+    it("returns 'No notes found.' when the book has none", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess([])
+      const result = asToolResult(await server.call("list_notes", { bookId: "book_1" }))
+      expect(result.content[0].text).toBe("No notes found.")
+    })
+
+    it("names the filter when nothing matches it, so it does not read as an empty book", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxBookNotes)
+      const result = asToolResult(
+        await server.call("list_notes", { bookId: "book_1", noteType: "research" })
+      )
+      expect(result.content[0].text).toBe("No research notes found.")
+    })
+
+    it("takes the six noteTypes create_note takes, and nothing else", async () => {
+      const server = await setup()
+      for (const noteType of ["worldbuilding", "research", "note", "general", "rule", "prohibition"]) {
+        expect(server.validate("list_notes", { bookId: "b", noteType }).success, noteType).toBe(true)
+        expect(
+          server.validate("create_note", { bookId: "b", title: "T", noteType }).success,
+          noteType
+        ).toBe(true)
+      }
+      expect(server.validate("list_notes", { bookId: "b" }).success).toBe(true)
+      expect(server.validate("list_notes", { bookId: "b", noteType: "law" }).success).toBe(false)
+      expect(server.validate("list_notes", {}).success).toBe(false)
+    })
+
+    it("is marked read-only", async () => {
+      const server = await setup()
+      expect(server.tools.get("list_notes")!.annotations).toEqual({
+        readOnlyHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it("returns tool error on API failure", async () => {
+      const server = await setup()
+      fetchMock.mockHttpError(404, {
+        success: false,
+        error: { code: "NOT_FOUND", message: "Project not found" },
+      })
+      const result = asToolResult(await server.call("list_notes", { bookId: "nope" }))
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("Project not found")
+    })
+  })
+
   describe("create operations", () => {
     it("create_character POSTs and reports created entity", async () => {
       const server = await setup()
@@ -203,6 +448,56 @@ describe("knowledge tools", () => {
       )
       expect(result.content[0].text).toContain("Created character: Alice")
       expect(fetchMock.lastCall()!.method).toBe("POST")
+    })
+
+    it("create_character sends customFields — the character card — as given", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxCharacter)
+      const customFields = {
+        goals: "He wants the Lexus; he wants nobody to ask how",
+        personality: "Cheerful until money comes up",
+        chapterOfDebut: 3,
+        nicknames: ["Al"],
+      }
+      await callParsed(server, "create_character", {
+        bookId: "book_1",
+        name: "Alice",
+        role: "protagonist",
+        customFields,
+      })
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("POST")
+      expect(call.url).toBe("https://test.creader.local/api/books/book_1/characters")
+      expect(call.body).toEqual({ name: "Alice", role: "protagonist", customFields })
+    })
+
+    it("create_character sends no customFields key when none are given", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxCharacter)
+      await callParsed(server, "create_character", {
+        bookId: "book_1",
+        name: "Alice",
+        role: "minor",
+      })
+      expect(fetchMock.lastCall()!.body).toEqual({ name: "Alice", role: "minor" })
+    })
+
+    it("create_character takes customFields as an object only", async () => {
+      const server = await setup()
+      const base = { bookId: "book_1", name: "Alice", role: "minor" }
+      for (const customFields of [null, "goals: the Lexus", ["goals"], 3]) {
+        expect(
+          server.validate("create_character", { ...base, customFields }).success,
+          JSON.stringify(customFields)
+        ).toBe(false)
+      }
+    })
+
+    it("create_character says a null is stored, not a removal", async () => {
+      const server = await setup()
+      const { description } = server.tools.get("create_character")!
+      expect(description).toContain("customFields")
+      expect(description).toMatch(/null is stored as null/)
     })
 
     it("create_location POSTs", async () => {
@@ -267,6 +562,51 @@ describe("knowledge tools", () => {
       expect(call.method).toBe("PATCH")
       expect(call.url).toBe("https://test.creader.local/api/characters/char_1")
       expect(call.body).toMatchObject({ description: "new" })
+    })
+
+    it("update_character passes a customFields patch through, nulls included", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxCharacter)
+      // null is how the server is told to remove a key. Dropping it on the way
+      // would turn a removal into a no-op that still reports "Updated".
+      const customFields = { goals: "Keep the secret", arc: null, coverImageUrl: null }
+      await callParsed(server, "update_character", { id: "char_1", customFields })
+      const call = fetchMock.lastCall()!
+      expect(call.method).toBe("PATCH")
+      expect(call.url).toBe("https://test.creader.local/api/characters/char_1")
+      expect(call.body).toEqual({ customFields })
+    })
+
+    it("update_character sends no customFields key when none are given", async () => {
+      const server = await setup()
+      fetchMock.mockSuccess(fxCharacter)
+      await callParsed(server, "update_character", { id: "char_1", name: "Al" })
+      expect(fetchMock.lastCall()!.body).toEqual({ name: "Al" })
+    })
+
+    it("update_character refuses null for the whole customFields", async () => {
+      const server = await setup()
+      // The route reads that as "clear the column" — the cover image, the life
+      // status and the whole card, in one call. Clients that fill an unused
+      // optional argument with null would do it by accident.
+      expect(server.validate("update_character", { id: "char_1", customFields: null }).success).toBe(
+        false
+      )
+      expect(
+        server.validate("update_character", { id: "char_1", customFields: ["goals"] }).success
+      ).toBe(false)
+      expect(server.validate("update_character", { id: "char_1", customFields: {} }).success).toBe(
+        true
+      )
+    })
+
+    it("update_character says customFields merges, and how a key is removed", async () => {
+      const server = await setup()
+      const { description } = server.tools.get("update_character")!
+      expect(description).toMatch(/customFields is merged/)
+      expect(description).toMatch(/keys you leave out are kept/)
+      expect(description).toMatch(/null is removed/)
+      expect(description).toMatch(/one level deep/)
     })
 
     it("update_location PATCHes /api/locations/:id", async () => {

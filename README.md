@@ -24,7 +24,7 @@ guardian_check returns GuardianIssue items. Each has a textPosition; proofreadin
 ```
 ┌─────────────────┐     MCP (stdio)     ┌──────────────────┐     HTTPS     ┌─────────────┐
 │  Claude / GPT   │ ◄────────────────► │  creader-mcp     │ ◄──────────► │  Creader API │
-│  or any MCP     │     79 tools        │  (this server)   │   REST+JSON  │  creader.io  │
+│  or any MCP     │     81 tools        │  (this server)   │   REST+JSON  │  creader.io  │
 │  client         │                     │                  │              │              │
 └─────────────────┘                     │  - TTL cache     │              │  - Books     │
                                         │  - Error recovery│              │  - Chapters  │
@@ -76,7 +76,7 @@ claude mcp add creader --env CREADER_API_KEY=cr_live_your_key_here -- npx -y @cr
 | `CREADER_API_KEY` | Yes | — | Your Creader API key (`cr_live_...`) |
 | `CREADER_API_URL` | No | `https://creader.io` | Creader API base URL |
 
-## Tools (79)
+## Tools (81)
 
 ### Books (4)
 
@@ -189,7 +189,7 @@ chapters and subplot threads on volumes.
 invent beats, and the MCP client is already a model. Write the beats, then call
 `create_plot_node`.
 
-### Knowledge Base (14)
+### Knowledge Base (16)
 
 > **Deprecation notice (v1.3.0):** the 12 per-type CRUD tools below are
 > deprecated. v2.0.0 consolidates them into `create_entity` / `update_entity` /
@@ -202,11 +202,13 @@ invent beats, and the MCP client is already a model. Write the beats, then call
 |------|-------------|
 | `search_knowledge` | Substring search across characters, locations, events, and notes (case-insensitive, CJK-safe; queries must be 2+ characters). For the prose itself, use `search_book` |
 | `list_knowledge` | List characters, locations, or events in a book |
-| `create_character` *(deprecated)* | Create a character (protagonist, antagonist, supporting, minor) |
+| `get_character` | Read one character in full: role, age, tags, description, and `customFields` (the character card) as JSON. `list_knowledge` and `get_book_context` leave the card out |
+| `list_notes` | List a book's notes with their full text, most recently updated first. Optional `noteType` filter (worldbuilding, research, note, general, `rule`, `prohibition`); `rule` and `prohibition` are the world constraints. `get_book_context` does not include notes |
+| `create_character` *(deprecated)* | Create a character (protagonist, antagonist, supporting, minor). `customFields` holds the character card (`goals`, `personality`, `background`, `arc`, …) and is stored as sent |
 | `create_location` *(deprecated)* | Create a location |
 | `create_event` *(deprecated)* | Create a timeline event |
 | `create_note` *(deprecated)* | Create a note (worldbuilding, research, note, general) or a world constraint (`rule` / `prohibition`) — constraints are force-injected into every AI prompt for the book and capped per plan |
-| `update_character` *(deprecated)* | Update a character's fields |
+| `update_character` *(deprecated)* | Update a character's fields. `customFields` is **merged**, one level deep: keys you send overwrite, keys you leave out are kept, and a key sent as `null` is removed |
 | `update_location` *(deprecated)* | Update a location's fields |
 | `update_event` *(deprecated)* | Update a timeline event's fields |
 | `update_note` *(deprecated)* | Update a note's fields |
@@ -371,7 +373,7 @@ Article               ← A standalone essay or post, owned by the writer — no
 |---------|----------|----------|-----|
 | **Chapter text / prose** | `create_chapter` / `update_chapter` | Notes or Knowledge Base | Chapters render as readable pages on creader.io |
 | **Story outline** | `generate_outline` → then `create_chapter` per chapter | Knowledge Base notes | Outlines are chapter-level structure — store them as chapters so they show up in the chapter list |
-| **Character profiles** | `create_character` | Notes | Characters have structured fields (role, age, tags) and appear in the World Foundation panel on creader.io |
+| **Character profiles** | `create_character` | Notes | Characters have structured fields (role, age, tags, `customFields`) and appear in the World Foundation panel on creader.io |
 | **Locations / settings** | `create_location` | Notes | Locations have type fields (city, forest, castle) and appear in World Foundation |
 | **Timeline / plot events** | `create_event` | Notes or chapters | Events have timestamps, importance levels, and consequences — they power the timeline view on creader.io |
 | **World rules / magic systems** | `create_note` (type: `worldbuilding`) | Characters or Events | Notes are for unstructured world lore that doesn't fit other categories |
@@ -397,9 +399,10 @@ Article               ← A standalone essay or post, owned by the writer — no
 **Continuing an existing book:**
 ```
 1. get_book_context → load everything into memory
-2. list_relations → understand entity connections
-3. Write / update chapters
-4. Update knowledge base as the story evolves
+2. list_notes (noteType: rule / prohibition) → the world constraints
+3. list_relations → understand entity connections
+4. Write / update chapters
+5. Update knowledge base as the story evolves
 ```
 
 **Multi-agent collaboration:**

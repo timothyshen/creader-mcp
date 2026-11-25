@@ -36,7 +36,12 @@ export interface Character {
   name: string
   role?: string
   description?: string
-  customFields?: Record<string, unknown>
+  age?: number | null
+  tags?: string[]
+  /** Two stored shapes: a flat record, or creader-editor's EntityField[]
+   *  (chapter-anchored values) on rows its chat tools have written. null when
+   *  nothing is stored. */
+  customFields?: Record<string, unknown> | unknown[] | null
 }
 
 export interface Location {

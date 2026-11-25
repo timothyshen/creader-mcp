@@ -62,7 +62,9 @@ Triage when the writer asks or the prose plainly settles it, not to empty a queu
 ### Knowledge Base
 - `search_knowledge` — Substring search across all entities in a book (names and descriptions; queries need 2+ characters). For the prose itself, use `search_book`
 - `list_knowledge` — List characters, locations, or events
-- `create_character` / `update_character` / `delete_character` — Manage characters
+- `get_character` — Read one character in full, with `customFields` (the character card) as JSON; `list_knowledge` and `get_book_context` leave the card out
+- `list_notes` — List a book's notes with their full text; optional `noteType` filter (`rule` / `prohibition` are the world constraints). `get_book_context` does not include notes
+- `create_character` / `update_character` / `delete_character` — Manage characters. `customFields` holds the character card (`goals`, `personality`, `background`, `arc`, …): create stores it as sent; update **merges** one level deep, keeping keys you leave out and removing a key sent as `null`
 - `create_location` / `update_location` / `delete_location` — Manage locations
 - `create_event` / `update_event` / `delete_event` — Manage timeline events
 - `create_note` / `update_note` / `delete_note` — Notes (worldbuilding, research, communication) and world constraints (`rule` / `prohibition`, force-injected into every AI prompt for the book)
@@ -111,7 +113,7 @@ Understanding where to store each type of content is critical for a good experie
 | Volumes / acts / scenes | **Structure** (`create_volume`, `create_act`, `create_scene`) | The spine chapters hang from; `apply_structure_template` lays one down on an empty plan |
 | What happens in a chapter | **Plan beats** (`create_plot_node`) | One sentence per beat; renders in the Plan grid and never touches the prose |
 | Subplot arcs | **Plan threads** (`create_plan_thread`) | Beats attach to threads via `threadIds`; the grid renders one column per thread |
-| Character profiles | **Characters** (`create_character`) | Structured fields (role, age, tags) → appears in World Foundation panel |
+| Character profiles | **Characters** (`create_character`) | Structured fields (role, age, tags, `customFields`) → appears in World Foundation panel |
 | Places / settings | **Locations** (`create_location`) | Typed locations (city, forest, castle) → appears in World Foundation |
 | Plot points / timeline | **Events** (`create_event`) | Has timestamps, importance, consequences → powers the timeline view |
 | World lore / magic systems | **Notes** (`create_note`, type: `worldbuilding`) | Free-form world lore that doesn't fit Characters/Locations/Events |
@@ -142,7 +144,7 @@ Understanding where to store each type of content is critical for a good experie
 
 **Existing book:**
 1. `get_book_context` → load everything
-2. `get_plan_spine` → the book as designed; `list_relations` → understand connections
+2. `get_plan_spine` → the book as designed; `list_relations` → understand connections; `list_notes` → world constraints and other notes
 3. `get_style` and `list_style_references` → match the voice before writing a word
 4. Write/update chapters; run `extract_entity_candidates` and let the writer triage what the prose proposed
 
